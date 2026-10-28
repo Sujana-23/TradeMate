@@ -97,6 +97,34 @@
   font-weight: 700;
 }
 
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table-container table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.table-container th,
+.table-container td {
+  padding: 14px 16px;
+  text-align: left;
+  overflow-wrap: break-word;
+}
+
+/* Make all 3 columns share the available width */
+.table-container th:nth-child(1),
+.table-container td:nth-child(1),
+.table-container th:nth-child(2),
+.table-container td:nth-child(2),
+.table-container th:nth-child(3),
+.table-container td:nth-child(3) {
+  width: 33.3333%;
+}
+
 @media (max-width: 600px) {
   .currency-cards {
     grid-template-columns: 1fr;

@@ -20,5 +20,13 @@ var app = builder.Build();
 app.UseCors("AllowReactApp");
 
 app.MapGet("/", () => "TradeMate API is running");
-app.MapGet("/api/exchangerates", async (ExchangeRateService service) => await service.GetRatesAsync());
+app.MapGet("/api/exchangerates", async (ExchangeRateService service) => {
+    Console.WriteLine("API CALLED: /api/exchangerates");
+
+    var rates = await service.GetRatesAsync();
+
+    Console.WriteLine("Exchange rates fetched successfully.");
+
+    return rates;
+});
 app.Run();

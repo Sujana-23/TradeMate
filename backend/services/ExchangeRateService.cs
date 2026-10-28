@@ -19,6 +19,19 @@ public class ExchangeRateService {
         if(response is null) {
             throw new Exception("No exchange-rate data recieved.");
         }
+
+        var topCurrencies = new[]
+        {
+            "INR", "USD", "EUR", "GBP", "AED",
+            "JPY", "AUD", "CAD", "SGD", "CHF"
+        };
+
+        if (response.rates is not null)
+        {
+            response.rates = response.rates
+                .Where(rate => topCurrencies.Contains(rate.Key))
+                .ToDictionary(rate => rate.Key, rate => rate.Value);
+        }
         
         return response;
     }

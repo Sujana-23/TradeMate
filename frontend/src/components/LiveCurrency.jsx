@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import {
   RefreshCw,
@@ -6,8 +5,7 @@ import {
   Clock,
   IndianRupee
 } from 'lucide-react';
-import './LiveCurrency.css'
-
+import './LiveCurrency.css';
 
 const currencyCountries = {
   USD: 'United States',
@@ -27,7 +25,6 @@ const currencyCountries = {
 function Home({ data, onRefresh, refreshing = false }) {
   const [selectedCurrency, setSelectedCurrency] = useState('USD');
 
-  // Use the actual API response instead of demo data.
   const rates = Object.entries(data?.rates ?? {}).map(
     ([code, rate]) => ({
       code,
@@ -38,7 +35,6 @@ function Home({ data, onRefresh, refreshing = false }) {
 
   const baseCurrency = data?.base_code;
 
-  // Handle loading or failed API responses.
   if (!data?.rates || !baseCurrency) {
     return (
       <main className="dashboard">
@@ -58,7 +54,6 @@ function Home({ data, onRefresh, refreshing = false }) {
     );
   }
 
-  // Make sure the selected currency exists in the API response.
   const selectedRate = rates.find(
     (item) => item.code === selectedCurrency
   );
@@ -188,7 +183,6 @@ function Home({ data, onRefresh, refreshing = false }) {
                 <th>Currency</th>
                 <th>Country / Region</th>
                 <th>Rate relative to {baseCurrency}</th>
-                <th>Type</th>
               </tr>
             </thead>
 
@@ -209,12 +203,6 @@ function Home({ data, onRefresh, refreshing = false }) {
                   <td>{item.country}</td>
 
                   <td>{Number(item.rate).toFixed(4)}</td>
-
-                  <td>
-                    <span className="rate-label">
-                      Live API
-                    </span>
-                  </td>
                 </tr>
               ))}
             </tbody>

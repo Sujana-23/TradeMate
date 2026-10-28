@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect,useCallback } from 'react';
 import {
   BrowserRouter,
   Routes,
@@ -17,27 +17,32 @@ import './App.css';
 
 function App() {
   const [data, setData] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchRates = useCallback(async () => {
+    setRefreshing(true);
+
+    try {
+      const response = await fetch(
+        'http://localhost:5134/api/exchangerates'
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch exchange rates');
+      }
+
+      const apiData = await response.json();
+      setData(apiData);
+    } catch (error) {
+      console.error('Failed to fetch exchange rates:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
 
   useEffect(() => {
-    async function loadRates() {
-      try {
-        const response = await fetch(
-          'http://localhost:5134/api/exchangerates'
-        );
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch exchange rates');
-        }
-
-        const apiData = await response.json();
-        setData(apiData);
-      } catch (error) {
-        console.error('Failed to fetch exchange rates:', error);
-      }
-    }
-
-    loadRates();
-  }, []);
+    fetchRates();
+  }, [fetchRates]);
 
   return (
     <BrowserRouter>
@@ -47,7 +52,7 @@ function App() {
         <Routes>
           <Route
             path="/"
-            element={<LiveCurrency data={data} />}
+            element={<LiveCurrency data={data} onRefresh={fetchRates} refreshing={refreshing}/>}
           />
 
           <Route
