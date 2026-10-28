@@ -1,33 +1,86 @@
-import { useState, useEffect } from 'react'
-import Dashboard from './components/Dashboard'
 
+import { useState, useEffect } from 'react';
+import {
+  BrowserRouter,
+  Routes,
+  Route
+} from 'react-router-dom';
+
+import Navbar from './components/Navbar';
+import LiveCurrency from './components/LiveCurrency';
+import CurrencyConverter from './components/CurrencyConverter';
+
+import History from './components/History';
+import Trends from './components/Trends';
+
+import './App.css';
 
 function App() {
-
   const [data, setData] = useState(null);
 
-  useEffect( () => {
+  useEffect(() => {
     async function loadRates() {
-      try{
-        const response = await fetch("http://localhost:5134/api/exchangerates");
+      try {
+        const response = await fetch(
+          'http://localhost:5134/api/exchangerates'
+        );
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch exchange rates');
+        }
 
         const apiData = await response.json();
         setData(apiData);
-
-      } catch {
-        console.error("Failed to fetch exchange rates");
+      } catch (error) {
+        console.error('Failed to fetch exchange rates:', error);
       }
-
     }
 
     loadRates();
-  }, [])
-  
+  }, []);
+
   return (
-    <>
-    <Dashboard data={data} />      
-    </>
-  )
+    <BrowserRouter>
+      <div className="app">
+        <Navbar />
+
+        <Routes>
+          <Route
+            path="/"
+            element={<LiveCurrency data={data} />}
+          />
+
+          <Route
+            path="/converter"
+            element={<CurrencyConverter data={data} />}
+          />
+
+          <Route
+            path="/history"
+            element={<History />}
+          />
+
+          <Route
+            path="/trends"
+            element={<Trends />}
+          />
+
+          <Route
+            path="*"
+            element={
+              <main className="dashboard">
+                <h1>Page not found</h1>
+              </main>
+            }
+          />
+        </Routes>
+
+        <footer className="footer">
+          TradeMate · International Currency Monitor
+        </footer>
+      </div>
+    </BrowserRouter>
+  );
 }
 
-export default App
+export default App;

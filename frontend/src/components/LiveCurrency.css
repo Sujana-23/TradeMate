@@ -1,0 +1,108 @@
+.currency-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+  margin-bottom: 30px;
+}
+
+.currency-card {
+  background: white;
+  padding: 25px;
+  border: 1px solid #e5eaf2;
+  border-radius: 14px;
+  box-shadow: 0 4px 16px rgba(25, 48, 78, 0.03);
+  min-width: 0;
+}
+
+.card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+  gap: 12px;
+}
+
+.currency-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  background: #edf4fc;
+  color: #245581;
+}
+
+.tag {
+  color: #718096;
+  background: #f4f6fa;
+  border-radius: 5px;
+  padding: 6px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.currency-name {
+  color: #64748b;
+  font-size: 14px;
+  margin-bottom: 5px;
+}
+
+.currency-card h2 {
+  margin: 10px 0;
+  font-size: 30px;
+  color: #173b64;
+}
+
+.muted {
+  color: #8491a5;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.selected-card label {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.selected-card select {
+  width: 100%;
+  padding: 11px;
+  border: 1px solid #d9e1ec;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #173b64;
+  margin-bottom: 10px;
+}
+
+.rate-unit {
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.selected-row {
+  background: #f0f6ff;
+}
+
+.rate-label {
+  display: inline-block;
+  padding: 5px 8px;
+  border-radius: 5px;
+  background: #fff5df;
+  color: #976a18;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+@media (max-width: 600px) {
+  .currency-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .currency-card {
+    padding: 18px;
+  }
+}
