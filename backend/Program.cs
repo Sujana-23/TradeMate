@@ -4,6 +4,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddHttpClient();
 builder.Services.AddHttpClient<ExchangeRateService>();
+builder.Services.AddHttpClient<HistoricalRateBackfill>();
 
 builder.Services.AddCors(options =>
 {
@@ -29,4 +30,14 @@ app.MapGet("/api/exchangerates", async (ExchangeRateService service) => {
 
     return rates;
 });
+
+if (args.Contains("--backfill-rates"))
+{
+    await app.Services
+        .GetRequiredService<HistoricalRateBackfill>()
+        .RunAsync();
+
+    return;
+}
+
 app.Run();
