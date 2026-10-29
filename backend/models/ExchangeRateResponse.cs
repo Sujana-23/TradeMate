@@ -5,4 +5,6 @@ public class ExchangeRateResponse {
     public string? base_code{get;set;}
     public long? time_last_update_unix {get;set;}
     public Dictionary<string,decimal>? rates{get;set;}
+    public bool alreadyUpdated { get; set; }
+
 }

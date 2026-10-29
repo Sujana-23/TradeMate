@@ -16,12 +16,10 @@ import Trends from './components/Trends';
 import './App.css';
 
 function App() {
+  
   const [data, setData] = useState(null);
-  const [refreshing, setRefreshing] = useState(false);
 
   const fetchRates = useCallback(async () => {
-    setRefreshing(true);
-
     try {
       const response = await fetch(
         'http://localhost:5134/api/exchangerates'
@@ -33,16 +31,17 @@ function App() {
 
       const apiData = await response.json();
       setData(apiData);
+      return apiData;
     } catch (error) {
       console.error('Failed to fetch exchange rates:', error);
-    } finally {
-      setRefreshing(false);
+      return null;
     }
   }, []);
 
   useEffect(() => {
     fetchRates();
   }, [fetchRates]);
+
 
   return (
     <BrowserRouter>
@@ -52,7 +51,7 @@ function App() {
         <Routes>
           <Route
             path="/"
-            element={<LiveCurrency data={data} onRefresh={fetchRates} refreshing={refreshing}/>}
+            element={<LiveCurrency data={data} />}
           />
 
           <Route

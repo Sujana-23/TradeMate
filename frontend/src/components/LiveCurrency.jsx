@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState , useEffect } from 'react';
 import {
   RefreshCw,
   Globe,
@@ -22,8 +22,64 @@ const currencyCountries = {
   NZD: 'New Zealand'
 };
 
-function Home({ data, onRefresh, refreshing = false }) {
+function Home({ data }) {
   const [selectedCurrency, setSelectedCurrency] = useState('USD');
+  const [alreadyUpdated, setAlreadyUpdated] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState('');
+
+  
+  
+  const handleRefresh = async () => {
+    if (alreadyUpdated) {
+      setMessage("Today's exchange rates are already updated!");
+      setMessageType('success');
+      return;
+    }
+
+    setRefreshing(true);
+    setMessage('');
+
+    try {
+      const response = await fetch(
+        'http://localhost:5134/api/exchangerates'
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch exchange rates');
+      }
+
+      const apiData = await response.json();
+
+      setAlreadyUpdated(apiData.alreadyUpdated);
+
+      if (apiData.alreadyUpdated) {
+        setMessage("Today's exchange rates are already updated!");
+        setMessageType('success');
+      } else {
+        setMessage('Exchange rates have been checked and updated!');
+        setMessageType('success');
+      }
+    } catch (error) {
+      console.error('Failed to refresh exchange rates:', error);
+      setMessage('Unable to refresh exchange rates. Please try again.');
+      setMessageType('error');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!message) return;
+
+    const timer = setTimeout(() => {
+      setMessage('');
+      setMessageType('');
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [message]);
 
   const rates = Object.entries(data?.rates ?? {}).map(
     ([code, rate]) => ({
@@ -44,11 +100,20 @@ function Home({ data, onRefresh, refreshing = false }) {
             Unable to load exchange rates. Please try again.
           </p>
 
-          {onRefresh && (
-            <button onClick={onRefresh} disabled={refreshing}>
-              Retry
-            </button>
-          )}
+          
+        <button
+          className="refresh-button"
+          onClick={handleRefresh}
+          disabled={refreshing}
+        >
+          <RefreshCw
+            size={16}
+            className={refreshing ? 'spin' : ''}
+          />
+
+          {refreshing ? 'Refreshing...' : 'Refresh Rates'}
+        </button>
+
         </section>
       </main>
     );
@@ -67,6 +132,13 @@ function Home({ data, onRefresh, refreshing = false }) {
 
   return (
     <main className="dashboard">
+    
+      {message && (
+        <div className={`refresh-toast ${messageType}`}>
+          {message}
+        </div>
+      )}
+
       <section className="welcome">
         <div>
           <p className="eyebrow">
@@ -164,8 +236,8 @@ function Home({ data, onRefresh, refreshing = false }) {
 
           <button
             className="refresh-button"
-            onClick={onRefresh}
-            disabled={!onRefresh || refreshing}
+            onClick={handleRefresh}
+            disabled={refreshing}
           >
             <RefreshCw
               size={16}

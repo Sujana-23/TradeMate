@@ -14,6 +14,64 @@
   min-width: 0;
 }
 
+
+.refresh-toast {
+  position: fixed !important;
+  top: auto !important;
+  right: 24px !important;
+  bottom: 24px !important;
+  left: auto !important;
+  z-index: 99999;
+
+  width: max-content;
+  max-width: calc(100vw - 48px);
+  box-sizing: border-box;
+
+  padding: 14px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  animation: toastSlideIn 0.3s ease-out;
+}
+
+.refresh-toast.success {
+  background-color: #e8f7ed;
+  color: #18743a;
+  border: 1px solid #b7e4c7;
+}
+
+.refresh-toast.error {
+  background-color: #fdecec;
+  color: #b42318;
+  border: 1px solid #f5c2c0;
+}
+
+@keyframes toastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 600px) {
+  .refresh-toast {
+    right: 12px !important;
+    bottom: 12px !important;
+    left: 12px !important;
+    width: auto;
+    max-width: none;
+  }
+}
+
+
 .card-top {
   display: flex;
   justify-content: space-between;

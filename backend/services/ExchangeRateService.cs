@@ -30,112 +30,122 @@ public class ExchangeRateService
 
     public string GetStatus() => "Exchange rate service is ready";
 
-    public async Task<ExchangeRateResponse> GetRatesAsync()
+    
+public async Task<ExchangeRateResponse> GetRatesAsync()
+{
+    bool alreadyUpdated = await SyncMissingRatesAsync();
+
+    var rates = new Dictionary<string, decimal>
     {
-        await SyncMissingRatesAsync();
+        ["INR"] = 1m
+    };
 
-        var rates = new Dictionary<string, decimal>
-        {
-            ["INR"] = 1m
-        };
+    long? latestTimestamp = null;
 
-        long? latestTimestamp = null;
+    await using var connection = new SqlConnection(_connectionString);
+    await connection.OpenAsync();
 
-        await using var connection = new SqlConnection(_connectionString);
-        await connection.OpenAsync();
+    const string sql = """
+        SELECT CurrencyCode, Rate, RateDate
+        FROM dbo.ExchangeRates e
+        WHERE RateDate = (
+            SELECT MAX(RateDate)
+            FROM dbo.ExchangeRates
+            WHERE CurrencyCode = e.CurrencyCode
+        );
+        """;
 
-        const string sql = """
-            SELECT CurrencyCode, Rate, RateDate
-            FROM dbo.ExchangeRates e
-            WHERE RateDate = (
-                SELECT MAX(RateDate)
-                FROM dbo.ExchangeRates
-                WHERE CurrencyCode = e.CurrencyCode
-            );
+    await using var command = new SqlCommand(sql, connection);
+    await using var reader = await command.ExecuteReaderAsync();
+
+    while (await reader.ReadAsync())
+    {
+        var currency = reader.GetString(0).Trim();
+        rates[currency] = reader.GetDecimal(1);
+
+        var timestamp = new DateTimeOffset(
+            DateTime.SpecifyKind(
+                reader.GetDateTime(2), DateTimeKind.Utc))
+            .ToUnixTimeSeconds();
+
+        if (latestTimestamp == null || timestamp > latestTimestamp)
+            latestTimestamp = timestamp;
+    }
+
+    return new ExchangeRateResponse
+    {
+        result = "success",
+        base_code = "INR",
+        time_last_update_unix = latestTimestamp,
+        rates = rates,
+        alreadyUpdated = alreadyUpdated
+    };
+}
+
+
+    
+private async Task<bool> SyncMissingRatesAsync()
+{
+    var today = DateTime.UtcNow.Date;
+    bool alreadyUpdated = true;
+
+    await using var connection = new SqlConnection(_connectionString);
+    await connection.OpenAsync();
+
+    foreach (var currency in _currencies)
+    {
+        const string latestSql = """
+            SELECT MAX(RateDate)
+            FROM dbo.ExchangeRates
+            WHERE CurrencyCode = @Currency;
             """;
 
-        await using var command = new SqlCommand(sql, connection);
-        await using var reader = await command.ExecuteReaderAsync();
+        await using var command = new SqlCommand(latestSql, connection);
+        command.Parameters.Add("@Currency", SqlDbType.Char, 3).Value = currency;
 
-        while (await reader.ReadAsync())
+        var result = await command.ExecuteScalarAsync();
+
+        var lastDate = result == null || result == DBNull.Value
+            ? today.AddYears(-1)
+            : Convert.ToDateTime(result).Date;
+
+        if (lastDate >= today)
+            continue;
+
+        alreadyUpdated = false;
+
+        var from = lastDate.AddDays(1).ToString("yyyy-MM-dd");
+        var to = today.ToString("yyyy-MM-dd");
+
+        var url =
+            $"https://api.frankfurter.dev/v2/rates" +
+            $"?base={currency}&quotes=INR&from={from}&to={to}";
+
+        var records =
+            await _httpClient.GetFromJsonAsync<List<FrankfurterRate>>(url);
+
+        if (records == null)
+            continue;
+
+        foreach (var record in records)
         {
-            var currency = reader.GetString(0).Trim();
-            rates[currency] = reader.GetDecimal(1);
-
-            var timestamp = new DateTimeOffset(
-                DateTime.SpecifyKind(
-                    reader.GetDateTime(2), DateTimeKind.Utc))
-                .ToUnixTimeSeconds();
-
-            if (latestTimestamp == null || timestamp > latestTimestamp)
-                latestTimestamp = timestamp;
-        }
-
-        return new ExchangeRateResponse
-        {
-            result = "success",
-            base_code = "INR",
-            time_last_update_unix = latestTimestamp,
-            rates = rates
-        };
-    }
-
-    private async Task SyncMissingRatesAsync()
-    {
-        var today = DateTime.UtcNow.Date;
-
-        await using var connection = new SqlConnection(_connectionString);
-        await connection.OpenAsync();
-
-        foreach (var currency in _currencies)
-        {
-            const string latestSql = """
-                SELECT MAX(RateDate)
-                FROM dbo.ExchangeRates
-                WHERE CurrencyCode = @Currency;
-                """;
-
-            await using var command = new SqlCommand(latestSql, connection);
-            command.Parameters.Add("@Currency", SqlDbType.Char, 3).Value = currency;
-
-            var result = await command.ExecuteScalarAsync();
-
-            var lastDate = result == null || result == DBNull.Value
-                ? today.AddYears(-1)
-                : Convert.ToDateTime(result).Date;
-
-            if (lastDate >= today)
+            if (record.Base != currency ||
+                record.Quote != "INR" ||
+                record.Rate <= 0)
                 continue;
 
-            var from = lastDate.AddDays(1).ToString("yyyy-MM-dd");
-            var to = today.ToString("yyyy-MM-dd");
+            var date = DateTime.ParseExact(
+                record.Date, "yyyy-MM-dd",
+                CultureInfo.InvariantCulture);
 
-            var url =
-                $"https://api.frankfurter.dev/v2/rates" +
-                $"?base={currency}&quotes=INR&from={from}&to={to}";
-
-            var records =
-                await _httpClient.GetFromJsonAsync<List<FrankfurterRate>>(url);
-
-            if (records == null)
-                continue;
-
-            foreach (var record in records)
-            {
-                if (record.Base != currency ||
-                    record.Quote != "INR" ||
-                    record.Rate <= 0)
-                    continue;
-
-                var date = DateTime.ParseExact(
-                    record.Date, "yyyy-MM-dd",
-                    CultureInfo.InvariantCulture);
-
-                await SaveRateAsync(connection, date, currency, record.Rate);
-                await SaveRateAsync(connection, date, "INR", 1m);
-            }
+            await SaveRateAsync(connection, date, currency, record.Rate);
+            await SaveRateAsync(connection, date, "INR", 1m);
         }
     }
+
+    return alreadyUpdated;
+}
+
 
     private static async Task SaveRateAsync(
         SqlConnection connection,
