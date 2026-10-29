@@ -1,4 +1,5 @@
-import { useState , useEffect } from 'react';
+
+import { useState, useEffect } from 'react';
 import {
   RefreshCw,
   Globe,
@@ -29,8 +30,7 @@ function Home({ data }) {
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('');
 
-  
-  
+  // Original refresh logic preserved.
   const handleRefresh = async () => {
     if (alreadyUpdated) {
       setMessage("Today's exchange rates are already updated!");
@@ -70,6 +70,7 @@ function Home({ data }) {
     }
   };
 
+  // Original toast timeout preserved.
   useEffect(() => {
     if (!message) return;
 
@@ -100,20 +101,17 @@ function Home({ data }) {
             Unable to load exchange rates. Please try again.
           </p>
 
-          
-        <button
-          className="refresh-button"
-          onClick={handleRefresh}
-          disabled={refreshing}
-        >
-          <RefreshCw
-            size={16}
-            className={refreshing ? 'spin' : ''}
-          />
-
-          {refreshing ? 'Refreshing...' : 'Refresh Rates'}
-        </button>
-
+          <button
+            className="refresh-button"
+            onClick={handleRefresh}
+            disabled={refreshing}
+          >
+            <RefreshCw
+              size={16}
+              className={refreshing ? 'spin' : ''}
+            />
+            {refreshing ? 'Refreshing...' : 'Refresh Rates'}
+          </button>
         </section>
       </main>
     );
@@ -132,7 +130,6 @@ function Home({ data }) {
 
   return (
     <main className="dashboard">
-    
       {message && (
         <div className={`refresh-toast ${messageType}`}>
           {message}
@@ -164,7 +161,6 @@ function Home({ data }) {
             <span className="currency-icon">
               <IndianRupee size={23} />
             </span>
-
             <span className="tag">BASE CURRENCY</span>
           </div>
 
@@ -184,7 +180,6 @@ function Home({ data }) {
             <span className="currency-icon">
               <Globe size={23} />
             </span>
-
             <span className="tag">SELECT CURRENCY</span>
           </div>
 
@@ -207,19 +202,19 @@ function Home({ data }) {
           </select>
 
           <h2>
-            {selectedCurrency === baseCurrency
-              ? '1.0000'
+            ₹{selectedCurrency === baseCurrency
+              ? '1.00'
               : selectedRate
-                ? (1 / selectedRate.rate).toFixed(4)
+                ? Number(selectedRate.rate).toFixed(2)
                 : '—'}
 
             <span className="rate-unit">
-              {' '}{baseCurrency} per 1 {selectedCurrency}
+              {' '}for 1 {selectedCurrency}
             </span>
           </h2>
 
           <p className="muted">
-            Rate relative to {baseCurrency}
+            Value in Indian Rupees
           </p>
         </article>
       </section>
@@ -228,9 +223,8 @@ function Home({ data }) {
         <div className="section-heading">
           <div>
             <h2>Exchange Rates</h2>
-
             <p>
-              Compare currencies against {baseCurrency}.
+              See how much foreign money is worth in Indian rupees.
             </p>
           </div>
 
@@ -243,7 +237,6 @@ function Home({ data }) {
               size={16}
               className={refreshing ? 'spin' : ''}
             />
-
             {refreshing ? 'Refreshing...' : 'Refresh Rates'}
           </button>
         </div>
@@ -254,7 +247,7 @@ function Home({ data }) {
               <tr>
                 <th>Currency</th>
                 <th>Country / Region</th>
-                <th>Rate relative to {baseCurrency}</th>
+                <th>Value in Rupees (₹)</th>
               </tr>
             </thead>
 
@@ -274,7 +267,9 @@ function Home({ data }) {
 
                   <td>{item.country}</td>
 
-                  <td>{Number(item.rate).toFixed(4)}</td>
+                  <td>
+                    ₹{Number(item.rate).toFixed(2)}
+                  </td>
                 </tr>
               ))}
             </tbody>
