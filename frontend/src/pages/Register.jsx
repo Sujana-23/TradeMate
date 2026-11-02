@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import {
-  User,
   Mail,
   Phone,
   LockKeyhole,
@@ -13,11 +12,12 @@ import {
 } from 'lucide-react';
 
 import './Auth.css';
+import Terms from './Terms';
 
 function Register() {
   const [formData, setFormData] = useState({
-    username: '',
     email: '',
+    countryCode: '+91',
     phone: '',
     password: '',
     confirmPassword: '',
@@ -26,7 +26,41 @@ function Register() {
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
   const [error, setError] = useState('');
+
+  // Password validation
+  const passwordRules = [
+    formData.password.length >= 8,
+    /[A-Z]/.test(formData.password),
+    /[a-z]/.test(formData.password),
+    /[0-9]/.test(formData.password),
+    /[^A-Za-z0-9]/.test(formData.password)
+  ];
+
+  const isPasswordStrong = passwordRules.every(Boolean);
+
+  const missingRequirements = [
+    formData.password.length < 8 && '8+ characters',
+    !/[A-Z]/.test(formData.password) && 'uppercase',
+    !/[a-z]/.test(formData.password) && 'lowercase',
+    !/[0-9]/.test(formData.password) && 'number',
+    !/[^A-Za-z0-9]/.test(formData.password) && 'special character'
+  ].filter(Boolean);
+
+  // Phone number lengths (national digits)
+  const phoneLengths = {
+    '+91': [10],
+    '+1': [10],
+    '+44': [10],
+    '+971': [9],
+    '+81': [10],
+    '+61': [9],
+    '+65': [8],
+    '+49': [10, 11],
+    '+33': [9]
+  };
 
   const handleChange = (event) => {
     const { name, value, checked, type } = event.target;
@@ -35,63 +69,78 @@ function Register() {
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
+
+    setError('');
   };
 
   const handleSubmit = (event) => {
     event.preventDefault();
     setError('');
 
-    if (formData.username.trim().length < 3) {
-      setError('Username must contain at least 3 characters.');
-      return;
-    }
+    // EMAIL VALIDATION
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    if (!emailPattern.test(formData.email.trim())) {
       setError('Please enter a valid email address.');
       return;
     }
 
-    if (!/^\+[1-9]\d{7,14}$/.test(formData.phone)) {
-      setError('Enter your phone number with country code, e.g. +919876543210.');
+    // PHONE VALIDATION
+    const phoneDigits = formData.phone.replace(/\D/g, '');
+    const allowedLengths = phoneLengths[formData.countryCode];
+
+    if (
+      !phoneDigits ||
+      (allowedLengths
+        ? !allowedLengths.includes(phoneDigits.length)
+        : phoneDigits.length < 7 || phoneDigits.length > 12)
+    ) {
+      setError('Please enter a valid phone number for the selected country.');
       return;
     }
 
-    if (formData.password.length < 8) {
-      setError('Password must contain at least 8 characters.');
+    // PASSWORD VALIDATION
+    if (!isPasswordStrong) {
+      setError('Please enter a strong password.');
       return;
     }
 
-    if (!/[A-Z]/.test(formData.password) ||
-        !/[a-z]/.test(formData.password) ||
-        !/[0-9]/.test(formData.password)) {
-      setError('Password must include uppercase, lowercase and a number.');
-      return;
-    }
-
+    // CONFIRM PASSWORD
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match.');
       return;
     }
 
+    // TERMS VALIDATION
     if (!formData.agreeTerms) {
       setError('Please accept the Terms and Conditions.');
       return;
     }
 
-    alert('Registration UI is ready. Backend integration will be added later.');
+    const fullPhoneNumber =
+      `${formData.countryCode}${phoneDigits}`;
+
+    alert(
+      `Registration UI is ready!\nEmail: ${formData.email}\nPhone: ${fullPhoneNumber}`
+    );
+
+    // Backend API integration will be added here.
   };
 
   return (
     <main className="auth-page">
       <section className="auth-container register-container">
 
+        {/* BRAND PANEL */}
         <div className="auth-brand-panel">
+
           <div className="auth-brand">
             <span className="brand-icon">T</span>
             <span>TradeMate</span>
           </div>
 
           <div className="auth-brand-content">
+
             <span className="auth-eyebrow">
               START YOUR JOURNEY
             </span>
@@ -106,13 +155,16 @@ function Register() {
               exchange rates, currency trends and financial
               insights in one place.
             </p>
+
           </div>
 
           <div className="auth-panel-footer">
             TradeMate · International Currency Monitor
           </div>
+
         </div>
 
+        {/* REGISTER FORM */}
         <div className="auth-form-panel register-form-panel">
 
           <div className="auth-mobile-brand">
@@ -123,37 +175,36 @@ function Register() {
           <div className="auth-form-content register-content">
 
             <div className="auth-heading">
-              <span className="auth-small-label">GET STARTED</span>
+
+              <span className="auth-small-label">
+                GET STARTED
+              </span>
+
               <h2>Create your account</h2>
+
               <p>Fill in your details to join TradeMate.</p>
+
             </div>
 
             {error && (
-              <div className="auth-error">{error}</div>
+              <div className="auth-error">
+                {error}
+              </div>
             )}
 
             <form onSubmit={handleSubmit}>
 
+              {/* EMAIL */}
               <div className="auth-field">
-                <label htmlFor="username">Username</label>
-                <div className="auth-input-wrapper">
-                  <User size={18} />
-                  <input
-                    id="username"
-                    name="username"
-                    placeholder="Choose a username"
-                    value={formData.username}
-                    onChange={handleChange}
-                    autoComplete="username"
-                    required
-                  />
-                </div>
-              </div>
 
-              <div className="auth-field">
-                <label htmlFor="email">Email Address</label>
+                <label htmlFor="email">
+                  Email Address
+                </label>
+
                 <div className="auth-input-wrapper">
+
                   <Mail size={18} />
+
                   <input
                     id="email"
                     type="email"
@@ -164,33 +215,71 @@ function Register() {
                     autoComplete="email"
                     required
                   />
+
                 </div>
+
               </div>
 
+              {/* PHONE */}
               <div className="auth-field">
-                <label htmlFor="phone">Phone Number</label>
-                <div className="auth-input-wrapper">
+
+                <label htmlFor="phone">
+                  Phone Number
+                </label>
+
+                <div className="auth-input-wrapper phone-input-wrapper">
+
                   <Phone size={18} />
+
+                  <select
+                    name="countryCode"
+                    value={formData.countryCode}
+                    onChange={handleChange}
+                    className="country-code-select"
+                    aria-label="Country calling code"
+                  >
+                    <option value="+91">🇮🇳 +91</option>
+                    <option value="+1">🇺🇸 +1</option>
+                    <option value="+44">🇬🇧 +44</option>
+                    <option value="+971">🇦🇪 +971</option>
+                    <option value="+81">🇯🇵 +81</option>
+                    <option value="+61">🇦🇺 +61</option>
+                    <option value="+65">🇸🇬 +65</option>
+                    <option value="+49">🇩🇪 +49</option>
+                    <option value="+33">🇫🇷 +33</option>
+                  </select>
+
                   <input
                     id="phone"
                     type="tel"
                     name="phone"
-                    placeholder="+919876543210"
+                    placeholder="Enter phone number"
                     value={formData.phone}
                     onChange={handleChange}
-                    autoComplete="tel"
+                    autoComplete="tel-national"
+                    maxLength={12}
                     required
                   />
+
                 </div>
+
                 <small className="auth-hint">
-                  Include your country code for SMS alerts.
+                  Select your country code and enter your phone number.
                 </small>
+
               </div>
 
+              {/* PASSWORD */}
               <div className="auth-field">
-                <label htmlFor="registerPassword">Password</label>
+
+                <label htmlFor="registerPassword">
+                  Password
+                </label>
+
                 <div className="auth-input-wrapper">
+
                   <LockKeyhole size={18} />
+
                   <input
                     id="registerPassword"
                     type={showPassword ? 'text' : 'password'}
@@ -198,6 +287,8 @@ function Register() {
                     placeholder="Create a password"
                     value={formData.password}
                     onChange={handleChange}
+                    onFocus={() => setPasswordFocused(true)}
+                    onBlur={() => setPasswordFocused(false)}
                     autoComplete="new-password"
                     required
                   />
@@ -206,19 +297,40 @@ function Register() {
                     type="button"
                     className="password-toggle"
                     onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    {showPassword
+                      ? <EyeOff size={18} />
+                      : <Eye size={18} />}
                   </button>
+
                 </div>
-                <small className="auth-hint">
-                  Minimum 8 characters, including uppercase, lowercase and a number.
-                </small>
+
+                {passwordFocused && (
+                  <div
+                    className={`password-strength ${
+                      isPasswordStrong ? 'strong' : 'weak'
+                    }`}
+                  >
+                    {isPasswordStrong
+                      ? 'Strong password ✓'
+                      : `Weak – ${missingRequirements.join(', ')} needed`}
+                  </div>
+                )}
+
               </div>
 
+              {/* CONFIRM PASSWORD */}
               <div className="auth-field">
-                <label htmlFor="confirmPassword">Confirm Password</label>
+
+                <label htmlFor="confirmPassword">
+                  Confirm Password
+                </label>
+
                 <div className="auth-input-wrapper">
+
                   <LockKeyhole size={18} />
+
                   <input
                     id="confirmPassword"
                     type={showConfirmPassword ? 'text' : 'password'}
@@ -233,31 +345,75 @@ function Register() {
                   <button
                     type="button"
                     className="password-toggle"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    onClick={() =>
+                      setShowConfirmPassword(!showConfirmPassword)
+                    }
+                    aria-label={
+                      showConfirmPassword ? 'Hide password' : 'Show password'
+                    }
                   >
-                    {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    {showConfirmPassword
+                      ? <EyeOff size={18} />
+                      : <Eye size={18} />}
                   </button>
+
                 </div>
+
+                {formData.confirmPassword && (
+                  <small
+                    className={
+                      formData.password === formData.confirmPassword
+                        ? 'password-match'
+                        : 'password-mismatch'
+                    }
+                  >
+                    {formData.password === formData.confirmPassword
+                      ? '✓ Passwords match'
+                      : '✕ Passwords do not match'}
+                  </small>
+                )}
+
               </div>
 
+              {/* TERMS AND CONDITIONS */}
               <label className="terms-option">
+
                 <input
                   type="checkbox"
                   name="agreeTerms"
                   checked={formData.agreeTerms}
                   onChange={handleChange}
                 />
+
                 <span>
-                  I agree to the Terms and Conditions and Privacy Policy.
+                  I agree to the{' '}
+                  <button
+                    type="button"
+                    className="terms-link"
+                    onClick={() => setShowTerms(true)}
+                  >
+                    Terms and Conditions
+                  </button>
+                  {' '}and Privacy Policy.
                 </span>
+
               </label>
 
-              <button type="submit" className="auth-submit">
+              {/* REGISTER BUTTON */}
+              <button
+                type="submit"
+                className="auth-submit"
+              >
                 Create Account
                 <ArrowRight size={18} />
               </button>
 
             </form>
+
+            {/* TERMS POPUP */}
+            {showTerms && (
+              <Terms onClose={() => setShowTerms(false)} />
+            )}
 
             <div className="auth-divider">
               <span>OR CONTINUE WITH</span>
@@ -266,7 +422,9 @@ function Register() {
             <button
               type="button"
               className="google-button"
-              onClick={() => alert('Google sign-in will be integrated later.')}
+              onClick={() =>
+                alert('Google sign-in will be integrated later.')
+              }
             >
               <GoogleIcon />
               Continue with Google
@@ -278,6 +436,7 @@ function Register() {
             </p>
 
           </div>
+
         </div>
 
       </section>
@@ -288,10 +447,28 @@ function Register() {
 function GoogleIcon() {
   return (
     <svg viewBox="0 0 48 48" width="20" height="20">
-      <path fill="#4285F4" d="M46 24.5c0-1.5-.2-3-.5-4.5H24v9h12.4c-.5 2.8-2.1 5.2-4.5 6.8l7.2 5.6C43.3 37.4 46 31.5 46 24.5z"/>
-      <path fill="#34A853" d="M24 46c6.2 0 11.4-2 15.1-5.5l-7.2-5.6c-2 1.4-4.6 2.2-7.9 2.2-6.1 0-11.3-4.1-13.2-9.6l-7.5 5.8C6.9 41 14.9 46 24 46z"/>
-      <path fill="#FBBC05" d="M10.8 27.5a13.5 13.5 0 0 1 0-7l-7.5-5.8a23 23 0 0 0 0 18.6z"/>
-      <path fill="#EA4335" d="M24 9.5c3.4 0 6.5 1.2 8.9 3.5l6.7-6.7C35.5 2.4 30.2 0 24 0 14.9 0 6.9 5 3.3 12.7l7.5 5.8C12.7 13.6 17.9 9.5 24 9.5z" transform="translate(0 4)"/>
+
+      <path
+        fill="#4285F4"
+        d="M46 24.5c0-1.5-.2-3-.5-4.5H24v9h12.4c-.5 2.8-2.1 5.2-4.5 6.8l7.2 5.6C43.3 37.4 46 31.5 46 24.5z"
+      />
+
+      <path
+        fill="#34A853"
+        d="M24 46c6.2 0 11.4-2 15.1-5.5l-7.2-5.6c-2 1.4-4.6 2.2-7.9 2.2-6.1 0-11.3-4.1-13.2-9.6l-7.5 5.8C6.9 41 14.9 46 24 46z"
+      />
+
+      <path
+        fill="#FBBC05"
+        d="M10.8 27.5a13.5 13.5 0 0 0 0-7l-7.5-5.8a23 23 0 0 0 0 18.6z"
+      />
+
+      <path
+        fill="#EA4335"
+        d="M24 9.5c3.4 0 6.5 1.2 8.9 3.5l6.7-6.7C35.5 2.4 30.2 0 24 0 14.9 0 6.9 5 3.3 12.7l7.5 5.8C12.7 13.6 17.9 9.5 24 9.5z"
+        transform="translate(0 4)"
+      />
+
     </svg>
   );
 }

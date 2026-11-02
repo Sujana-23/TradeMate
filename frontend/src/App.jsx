@@ -18,6 +18,8 @@ import Trends from './components/Trends';
 import Login from './pages/Login';
 import Register from './pages/Register';
 
+import ForgotPassword from './pages/ForgotPassword';
+
 import './App.css';
 
 function App() {
@@ -197,20 +199,14 @@ function App() {
 
           {/* FORGOT PASSWORD PLACEHOLDER */}
 
+          {/* FORGOT PASSWORD PAGE */}
+
           <Route
             path="/forgot-password"
             element={
               isLoggedIn
                 ? <Navigate to="/dashboard" replace />
-                : (
-                  <main className="auth-page">
-                    <div className="auth-form-content">
-                      <h2>Forgot Password</h2>
-                      <p>Password recovery will be added later.</p>
-                      <a href="/login">Back to Login</a>
-                    </div>
-                  </main>
-                )
+                : <ForgotPassword />
             }
           />
 
