@@ -1,7 +1,8 @@
+create database trademate;
 USE trademate;
-GO
 
-CREATE TABLE dbo.Currencies (
+
+CREATE TABLE Currencies (
     CurrencyCode CHAR(3) NOT NULL,
     CurrencyName NVARCHAR(100) NOT NULL,
     IsActive BIT NOT NULL
@@ -10,10 +11,10 @@ CREATE TABLE dbo.Currencies (
     CONSTRAINT PK_Currencies
         PRIMARY KEY (CurrencyCode)
 );
-GO
 
 
-INSERT INTO dbo.Currencies (CurrencyCode, CurrencyName)
+
+INSERT INTO Currencies (CurrencyCode, CurrencyName)
 VALUES
     ('INR', 'Indian Rupee'),
     ('USD', 'US Dollar'),
@@ -25,12 +26,12 @@ VALUES
     ('CAD', 'Canadian Dollar'),
     ('SGD', 'Singapore Dollar'),
     ('CHF', 'Swiss Franc');
-GO
-
-SELECT * FROM dbo.Currencies ORDER BY CurrencyCode;
 
 
-CREATE TABLE dbo.ExchangeRates (
+SELECT * FROM Currencies ORDER BY CurrencyCode;
+
+
+CREATE TABLE ExchangeRates (
     RateDate DATE NOT NULL,
     CurrencyCode CHAR(3) NOT NULL,
     Rate DECIMAL(19, 10) NOT NULL,
@@ -46,14 +47,14 @@ CREATE TABLE dbo.ExchangeRates (
 
     CONSTRAINT FK_ExchangeRates_Currencies
         FOREIGN KEY (CurrencyCode)
-        REFERENCES dbo.Currencies (CurrencyCode),
+        REFERENCES Currencies (CurrencyCode),
 
     CONSTRAINT CK_ExchangeRates_Rate
         CHECK (Rate > 0)
 );
-GO
 
 
+select * from ExchangeRates;
 
 
 --last
@@ -63,7 +64,7 @@ SELECT
     Rate,
     Source,
     FetchedAt
-FROM dbo.ExchangeRates
+FROM ExchangeRates
 ORDER BY RateDate DESC, CurrencyCode;
 
 SELECT
@@ -71,7 +72,7 @@ SELECT
     COUNT(*) AS ObservationCount,
     MIN(RateDate) AS FirstDate,
     MAX(RateDate) AS LatestDate
-FROM dbo.ExchangeRates
+FROM ExchangeRates
 GROUP BY CurrencyCode
 ORDER BY CurrencyCode;
 
@@ -85,7 +86,7 @@ WITH LatestRates AS (
             PARTITION BY CurrencyCode
             ORDER BY RateDate DESC
         ) AS rn
-    FROM dbo.ExchangeRates
+    FROM ExchangeRates
 )
 SELECT RateDate, CurrencyCode, Rate
 FROM LatestRates
