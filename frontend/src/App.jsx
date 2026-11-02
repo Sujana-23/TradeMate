@@ -12,7 +12,9 @@ import Navbar from './components/Navbar';
 
 import LiveCurrency from './components/LiveCurrency';
 import CurrencyConverter from './components/CurrencyConverter';
-import History from './components/History';
+
+import Profile from './pages/Profile';
+
 import Trends from './components/Trends';
 
 import Login from './pages/Login';
@@ -155,16 +157,19 @@ function App() {
             }
           />
 
-          {/* PROTECTED HISTORY */}
+          
+
+          
+          {/* PROTECTED TRENDS */}
 
           <Route
-            path="/history"
+            path="/trends"
             element={
               isLoggedIn ? (
                 <>
                   <Navbar onLogout={handleLogout} />
 
-                  <History />
+                  <Trends />
 
                   <footer className="footer">
                     TradeMate · International Currency Monitor
@@ -176,16 +181,16 @@ function App() {
             }
           />
 
-          {/* PROTECTED TRENDS */}
+          {/* PROTECTED PROFILE */}
 
           <Route
-            path="/trends"
+            path="/profile"
             element={
               isLoggedIn ? (
                 <>
                   <Navbar onLogout={handleLogout} />
 
-                  <Trends />
+                  <Profile />
 
                   <footer className="footer">
                     TradeMate · International Currency Monitor

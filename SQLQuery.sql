@@ -1,7 +1,4 @@
-create database trademate;
-USE trademate;
-
-
+use trademate;
 CREATE TABLE Currencies (
     CurrencyCode CHAR(3) NOT NULL,
     CurrencyName NVARCHAR(100) NOT NULL,
@@ -11,7 +8,6 @@ CREATE TABLE Currencies (
     CONSTRAINT PK_Currencies
         PRIMARY KEY (CurrencyCode)
 );
-
 
 
 INSERT INTO Currencies (CurrencyCode, CurrencyName)
@@ -27,9 +23,9 @@ VALUES
     ('SGD', 'Singapore Dollar'),
     ('CHF', 'Swiss Franc');
 
-
-SELECT * FROM Currencies ORDER BY CurrencyCode;
-
+SELECT *
+FROM Currencies
+ORDER BY CurrencyCode;
 
 CREATE TABLE ExchangeRates (
     RateDate DATE NOT NULL,
@@ -53,11 +49,6 @@ CREATE TABLE ExchangeRates (
         CHECK (Rate > 0)
 );
 
-
-select * from ExchangeRates;
-
-
---last
 SELECT
     RateDate,
     CurrencyCode,
@@ -88,8 +79,39 @@ WITH LatestRates AS (
         ) AS rn
     FROM ExchangeRates
 )
-SELECT RateDate, CurrencyCode, Rate
+SELECT
+    RateDate,
+    CurrencyCode,
+    Rate
 FROM LatestRates
 WHERE rn = 1
 ORDER BY CurrencyCode;
 
+DROP TABLE Users;
+
+CREATE TABLE Users
+(
+    UserId INT IDENTITY(1,1) NOT NULL,
+
+    Email NVARCHAR(255) NOT NULL,
+
+    Phone VARCHAR(16) ,
+
+    PasswordHash NVARCHAR(255) ,
+
+    TermsAccepted BIT NOT NULL,
+
+    CreatedAt DATETIME2 NOT NULL
+        CONSTRAINT DF_Users_CreatedAt
+        DEFAULT SYSUTCDATETIME(),
+
+    IsActive BIT NOT NULL
+        CONSTRAINT DF_Users_IsActive
+        DEFAULT 1,
+
+    CONSTRAINT PK_Users
+        PRIMARY KEY (UserId),
+
+    CONSTRAINT UQ_Users_Email
+        UNIQUE (Email)
+);

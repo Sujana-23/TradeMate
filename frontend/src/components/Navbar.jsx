@@ -4,8 +4,8 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   ArrowLeftRight,
-  History as HistoryIcon,
   TrendingUp,
+  UserRound,
   LogOut
 } from 'lucide-react';
 
@@ -39,14 +39,15 @@ function Navbar({ onLogout }) {
           Converter
         </NavLink>
 
-        <NavLink to="/history">
-          <HistoryIcon size={17} />
-          History
-        </NavLink>
 
         <NavLink to="/trends">
           <TrendingUp size={17} />
           Trends
+        </NavLink>
+
+        <NavLink to="/profile">
+            <UserRound size={17} />
+            Profile
         </NavLink>
 
         <button
