@@ -1,7 +1,6 @@
 
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { registerUser } from '../services/authService';
 
 import {
@@ -10,13 +9,17 @@ import {
   LockKeyhole,
   Eye,
   EyeOff,
-  ArrowRight
+  ArrowRight,
+  CheckCircle,
+  ShieldCheck
 } from 'lucide-react';
 
 import './Auth.css';
 import Terms from './Terms';
 
 function Register() {
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     email: '',
     countryCode: '+91',
@@ -26,17 +29,31 @@ function Register() {
     agreeTerms: false
   });
 
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [emailVerified, setEmailVerified] = useState(false);
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
+
   const [error, setError] = useState('');
-
-  const navigate = useNavigate();
-  const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  // Password validation
+  const phoneLengths = {
+    '+91': [10],
+    '+1': [10],
+    '+44': [10],
+    '+971': [9],
+    '+81': [10],
+    '+61': [9],
+    '+65': [8],
+    '+49': [10, 11],
+    '+33': [9]
+  };
+
   const passwordRules = [
     formData.password.length >= 8,
     /[A-Z]/.test(formData.password),
@@ -55,19 +72,6 @@ function Register() {
     !/[^A-Za-z0-9]/.test(formData.password) && 'special character'
   ].filter(Boolean);
 
-  // Phone number lengths (national digits)
-  const phoneLengths = {
-    '+91': [10],
-    '+1': [10],
-    '+44': [10],
-    '+971': [9],
-    '+81': [10],
-    '+61': [9],
-    '+65': [8],
-    '+49': [10, 11],
-    '+33': [9]
-  };
-
   const handleChange = (event) => {
     const { name, value, checked, type } = event.target;
 
@@ -76,15 +80,21 @@ function Register() {
       [name]: type === 'checkbox' ? checked : value
     }));
 
+    if (name === 'email') {
+      setOtpSent(false);
+      setEmailVerified(false);
+      setOtp('');
+    }
+
     setError('');
+    setSuccess('');
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  // FRONTEND DEMO OTP
+  const handleSendOTP = () => {
     setError('');
     setSuccess('');
 
-    // EMAIL VALIDATION
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailPattern.test(formData.email.trim())) {
@@ -92,82 +102,131 @@ function Register() {
       return;
     }
 
-    // PHONE VALIDATION
-    const phoneDigits = formData.phone.replace(/\D/g, '');
-    const allowedLengths = phoneLengths[formData.countryCode];
+    setOtpSent(true);
+    setEmailVerified(false);
+    setOtp('');
 
-    if (
-      !phoneDigits ||
-      (allowedLengths
-        ? !allowedLengths.includes(phoneDigits.length)
-        : phoneDigits.length < 7 || phoneDigits.length > 12)
-    ) {
-      setError('Please enter a valid phone number for the selected country.');
+    setSuccess(
+      'Demo OTP generated! Use 123456 to verify your email.'
+    );
+  };
+
+  // VERIFY OTP
+  const handleVerifyOTP = () => {
+    setError('');
+    setSuccess('');
+
+    if (otp.length !== 6) {
+      setError('Please enter the 6-digit OTP.');
       return;
     }
 
-    // PASSWORD VALIDATION
-    if (!isPasswordStrong) {
-      setError('Please enter a strong password.');
-      return;
-    }
-
-    // CONFIRM PASSWORD
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match.');
-      return;
-    }
-
-    // TERMS VALIDATION
-    if (!formData.agreeTerms) {
-      setError('Please accept the Terms and Conditions.');
-      return;
-    }
-
-    try {
-      setSubmitting(true);
-
-      const fullPhoneNumber =
-        `${formData.countryCode}${phoneDigits}`;
-
-      await registerUser({
-        email: formData.email.trim(),
-        phone: fullPhoneNumber,
-        password: formData.password,
-        confirmPassword: formData.confirmPassword,
-        termsAccepted: formData.agreeTerms
-      });
-
-      setSuccess('Registration successful! Redirecting to login...');
-
-      setTimeout(() => {
-        navigate('/login', {
-          state: { registered: true }
-        });
-      }, 1500);
-
-    } catch (error) {
-      setError(error.message);
-    } finally {
-      setSubmitting(false);
+    if (otp === '123456') {
+      setEmailVerified(true);
+      setSuccess('Email address verified successfully!');
+    } else {
+      setError('Invalid OTP. Please try again.');
     }
   };
+
+  
+const handleSubmit = async (event) => {
+  event.preventDefault();
+
+  setError('');
+  setSuccess('');
+
+  // EMAIL VERIFICATION
+  if (!emailVerified) {
+    setError(
+      'Please verify your email address before creating your account.'
+    );
+    return;
+  }
+
+  // EMAIL VALIDATION
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (!emailPattern.test(formData.email.trim())) {
+    setError('Please enter a valid email address.');
+    return;
+  }
+
+  // PHONE VALIDATION
+  const phoneDigits = formData.phone.replace(/\D/g, '');
+  const allowedLengths = phoneLengths[formData.countryCode];
+
+  if (
+    !phoneDigits ||
+    (allowedLengths
+      ? !allowedLengths.includes(phoneDigits.length)
+      : phoneDigits.length < 7 || phoneDigits.length > 12)
+  ) {
+    setError('Please enter a valid phone number.');
+    return;
+  }
+
+  // PASSWORD VALIDATION
+  if (!isPasswordStrong) {
+    setError('Please enter a strong password.');
+    return;
+  }
+
+  // CONFIRM PASSWORD
+  if (formData.password !== formData.confirmPassword) {
+    setError('Passwords do not match.');
+    return;
+  }
+
+  // TERMS VALIDATION
+  if (!formData.agreeTerms) {
+    setError('Please accept the Terms and Conditions.');
+    return;
+  }
+
+  try {
+    setSubmitting(true);
+
+    const fullPhoneNumber =
+      `${formData.countryCode}${phoneDigits}`;
+
+    await registerUser({
+      email: formData.email.trim(),
+      phone: fullPhoneNumber,
+      password: formData.password,
+      confirmPassword: formData.confirmPassword,
+      termsAccepted: formData.agreeTerms
+    });
+
+    setSuccess('Registration successful! Redirecting to login...');
+
+    setTimeout(() => {
+      navigate('/login', {
+        state: { registered: true }
+      });
+    }, 1500);
+
+  } catch (error) {
+    setError(
+      error.message || 'Registration failed. Please try again.'
+    );
+  } finally {
+    setSubmitting(false);
+  }
+};
 
 
   return (
     <main className="auth-page">
       <section className="auth-container register-container">
 
-        {/* BRAND PANEL */}
         <div className="auth-brand-panel">
-
           <div className="auth-brand">
             <span className="brand-icon">T</span>
             <span>TradeMate</span>
           </div>
 
           <div className="auth-brand-content">
-
             <span className="auth-eyebrow">
               START YOUR JOURNEY
             </span>
@@ -182,16 +241,13 @@ function Register() {
               exchange rates, currency trends and financial
               insights in one place.
             </p>
-
           </div>
 
           <div className="auth-panel-footer">
             TradeMate · International Currency Monitor
           </div>
-
         </div>
 
-        {/* REGISTER FORM */}
         <div className="auth-form-panel register-form-panel">
 
           <div className="auth-mobile-brand">
@@ -202,15 +258,12 @@ function Register() {
           <div className="auth-form-content register-content">
 
             <div className="auth-heading">
-
               <span className="auth-small-label">
                 GET STARTED
               </span>
 
               <h2>Create your account</h2>
-
               <p>Fill in your details to join TradeMate.</p>
-
             </div>
 
             {error && (
@@ -228,14 +281,13 @@ function Register() {
             <form onSubmit={handleSubmit}>
 
               {/* EMAIL */}
-              <div className="auth-field">
 
+              <div className="auth-field">
                 <label htmlFor="email">
                   Email Address
                 </label>
 
                 <div className="auth-input-wrapper">
-
                   <Mail size={18} />
 
                   <input
@@ -249,19 +301,79 @@ function Register() {
                     required
                   />
 
+                  {!emailVerified && (
+                    <button
+                      type="button"
+                      className="otp-send-button"
+                      onClick={handleSendOTP}
+                    >
+                      {otpSent ? 'Resend OTP' : 'Send OTP'}
+                    </button>
+                  )}
+
+                  {emailVerified && (
+                    <CheckCircle
+                      size={20}
+                      color="#18845b"
+                    />
+                  )}
                 </div>
 
+                {emailVerified && (
+                  <small className="email-verified">
+                    <ShieldCheck size={14} />
+                    Email verified successfully
+                  </small>
+                )}
               </div>
 
-              {/* PHONE */}
-              <div className="auth-field">
+              {/* OTP */}
 
+              {otpSent && !emailVerified && (
+                <div className="auth-field otp-field">
+                  <label htmlFor="otp">
+                    Enter Email OTP
+                  </label>
+
+                  <div className="otp-input-group">
+                    <input
+                      id="otp"
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      placeholder="Enter 6-digit OTP"
+                      value={otp}
+                      onChange={(e) => {
+                        setOtp(
+                          e.target.value.replace(/\D/g, '')
+                        );
+                        setError('');
+                      }}
+                    />
+
+                    <button
+                      type="button"
+                      className="otp-verify-button"
+                      onClick={handleVerifyOTP}
+                    >
+                      Verify OTP
+                    </button>
+                  </div>
+
+                  <small className="auth-hint">
+                    Demo OTP: 123456
+                  </small>
+                </div>
+              )}
+
+              {/* PHONE */}
+
+              <div className="auth-field">
                 <label htmlFor="phone">
                   Phone Number
                 </label>
 
                 <div className="auth-input-wrapper phone-input-wrapper">
-
                   <Phone size={18} />
 
                   <select
@@ -293,24 +405,17 @@ function Register() {
                     maxLength={12}
                     required
                   />
-
                 </div>
-
-                <small className="auth-hint">
-                  Select your country code and enter your phone number.
-                </small>
-
               </div>
 
               {/* PASSWORD */}
-              <div className="auth-field">
 
+              <div className="auth-field">
                 <label htmlFor="registerPassword">
                   Password
                 </label>
 
                 <div className="auth-input-wrapper">
-
                   <LockKeyhole size={18} />
 
                   <input
@@ -330,13 +435,11 @@ function Register() {
                     type="button"
                     className="password-toggle"
                     onClick={() => setShowPassword(!showPassword)}
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword
                       ? <EyeOff size={18} />
                       : <Eye size={18} />}
                   </button>
-
                 </div>
 
                 {passwordFocused && (
@@ -350,18 +453,16 @@ function Register() {
                       : `Weak – ${missingRequirements.join(', ')} needed`}
                   </div>
                 )}
-
               </div>
 
               {/* CONFIRM PASSWORD */}
-              <div className="auth-field">
 
+              <div className="auth-field">
                 <label htmlFor="confirmPassword">
                   Confirm Password
                 </label>
 
                 <div className="auth-input-wrapper">
-
                   <LockKeyhole size={18} />
 
                   <input
@@ -381,15 +482,11 @@ function Register() {
                     onClick={() =>
                       setShowConfirmPassword(!showConfirmPassword)
                     }
-                    aria-label={
-                      showConfirmPassword ? 'Hide password' : 'Show password'
-                    }
                   >
                     {showConfirmPassword
                       ? <EyeOff size={18} />
                       : <Eye size={18} />}
                   </button>
-
                 </div>
 
                 {formData.confirmPassword && (
@@ -405,12 +502,11 @@ function Register() {
                       : '✕ Passwords do not match'}
                   </small>
                 )}
-
               </div>
 
-              {/* TERMS AND CONDITIONS */}
-              <label className="terms-option">
+              {/* TERMS */}
 
+              <label className="terms-option">
                 <input
                   type="checkbox"
                   name="agreeTerms"
@@ -429,25 +525,33 @@ function Register() {
                   </button>
                   {' '}and Privacy Policy.
                 </span>
-
               </label>
 
-              {/* REGISTER BUTTON */}
+              {showTerms && (
+                <Terms onClose={() => setShowTerms(false)} />
+              )}
+
+              {/* REGISTER */}
+
               <button
                 type="submit"
                 className="auth-submit"
                 disabled={submitting}
               >
-                {submitting ? 'Creating Account...' : 'Create Account'}
+                {submitting
+                  ? 'Creating Account...'
+                  : 'Create Account'}
+
                 {!submitting && <ArrowRight size={18} />}
               </button>
 
-            </form>
+              {!emailVerified && (
+                <small className="registration-hint">
+                  Please verify your email before creating your account.
+                </small>
+              )}
 
-            {/* TERMS POPUP */}
-            {showTerms && (
-              <Terms onClose={() => setShowTerms(false)} />
-            )}
+            </form>
 
             <div className="auth-divider">
               <span>OR CONTINUE WITH</span>
@@ -460,7 +564,6 @@ function Register() {
                 alert('Google sign-in will be integrated later.')
               }
             >
-              <GoogleIcon />
               Continue with Google
             </button>
 
@@ -470,40 +573,9 @@ function Register() {
             </p>
 
           </div>
-
         </div>
-
       </section>
     </main>
-  );
-}
-
-function GoogleIcon() {
-  return (
-    <svg viewBox="0 0 48 48" width="20" height="20">
-
-      <path
-        fill="#4285F4"
-        d="M46 24.5c0-1.5-.2-3-.5-4.5H24v9h12.4c-.5 2.8-2.1 5.2-4.5 6.8l7.2 5.6C43.3 37.4 46 31.5 46 24.5z"
-      />
-
-      <path
-        fill="#34A853"
-        d="M24 46c6.2 0 11.4-2 15.1-5.5l-7.2-5.6c-2 1.4-4.6 2.2-7.9 2.2-6.1 0-11.3-4.1-13.2-9.6l-7.5 5.8C6.9 41 14.9 46 24 46z"
-      />
-
-      <path
-        fill="#FBBC05"
-        d="M10.8 27.5a13.5 13.5 0 0 0 0-7l-7.5-5.8a23 23 0 0 0 0 18.6z"
-      />
-
-      <path
-        fill="#EA4335"
-        d="M24 9.5c3.4 0 6.5 1.2 8.9 3.5l6.7-6.7C35.5 2.4 30.2 0 24 0 14.9 0 6.9 5 3.3 12.7l7.5 5.8C12.7 13.6 17.9 9.5 24 9.5z"
-        transform="translate(0 4)"
-      />
-
-    </svg>
   );
 }
 
