@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
+import { getToken, logoutUser } from './services/authService';
 import {
   BrowserRouter,
   Routes,
@@ -28,10 +29,7 @@ function App() {
 
   const [data, setData] = useState(null);
 
-  // Temporary frontend demo login session
-  const [isLoggedIn, setIsLoggedIn] = useState(
-    sessionStorage.getItem('demoLogin') === 'true'
-  );
+  const [isLoggedIn, setIsLoggedIn] = useState(!!getToken());
 
   // Fetch exchange rates
   const fetchRates = useCallback(async () => {
@@ -63,15 +61,12 @@ function App() {
     }
   }, [isLoggedIn, fetchRates]);
 
-  // Login handler
   const handleLogin = () => {
-    sessionStorage.setItem('demoLogin', 'true');
     setIsLoggedIn(true);
   };
 
-  // Logout handler
   const handleLogout = () => {
-    sessionStorage.removeItem('demoLogin');
+    logoutUser();
     setIsLoggedIn(false);
   };
 

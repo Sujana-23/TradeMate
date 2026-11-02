@@ -1,6 +1,7 @@
 
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { loginUser } from '../services/authService';
 
 import {
   Eye,
@@ -21,8 +22,9 @@ function Login({ onLogin }) {
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
 
@@ -36,12 +38,24 @@ function Login({ onLogin }) {
       return;
     }
 
-    // Temporary frontend testing only.
-    // Replace with backend authentication later.
+    try {
+      setSubmitting(true);
+
+      await loginUser({
+      email: email.trim(),
+      password: password
+    });
 
     onLogin();
     navigate('/dashboard');
+
+    } catch (error) {
+      setError(error.message || 'Login failed.');
+    } finally {
+      setSubmitting(false);
+    }
   };
+
 
   return (
     <main className="auth-page">
@@ -98,7 +112,7 @@ function Login({ onLogin }) {
                 WELCOME BACK
               </span>
 
-              <h2>Sign in to your account</h2>
+              <h2>Log in to your account</h2>
 
               <p>
                 Enter your credentials to access your dashboard.
@@ -196,9 +210,10 @@ function Login({ onLogin }) {
               <button
                 type="submit"
                 className="auth-submit"
+                disabled={submitting}
               >
-                Sign In
-                <ArrowRight size={18} />
+                {submitting ? 'Logging in...' : 'Log In'}
+                {!submitting && <ArrowRight size={18} />}
               </button>
 
             </form>

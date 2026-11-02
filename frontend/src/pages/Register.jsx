@@ -1,6 +1,8 @@
 
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { registerUser } from '../services/authService';
 
 import {
   Mail,
@@ -29,6 +31,10 @@ function Register() {
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [error, setError] = useState('');
+
+  const navigate = useNavigate();
+  const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState('');
 
   // Password validation
   const passwordRules = [
@@ -73,9 +79,10 @@ function Register() {
     setError('');
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
+    setSuccess('');
 
     // EMAIL VALIDATION
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -117,15 +124,35 @@ function Register() {
       return;
     }
 
-    const fullPhoneNumber =
-      `${formData.countryCode}${phoneDigits}`;
+    try {
+      setSubmitting(true);
 
-    alert(
-      `Registration UI is ready!\nEmail: ${formData.email}\nPhone: ${fullPhoneNumber}`
-    );
+      const fullPhoneNumber =
+        `${formData.countryCode}${phoneDigits}`;
 
-    // Backend API integration will be added here.
+      await registerUser({
+        email: formData.email.trim(),
+        phone: fullPhoneNumber,
+        password: formData.password,
+        confirmPassword: formData.confirmPassword,
+        termsAccepted: formData.agreeTerms
+      });
+
+      setSuccess('Registration successful! Redirecting to login...');
+
+      setTimeout(() => {
+        navigate('/login', {
+          state: { registered: true }
+        });
+      }, 1500);
+
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setSubmitting(false);
+    }
   };
+
 
   return (
     <main className="auth-page">
@@ -189,6 +216,12 @@ function Register() {
             {error && (
               <div className="auth-error">
                 {error}
+              </div>
+            )}
+
+            {success && (
+              <div className="auth-success">
+                {success}
               </div>
             )}
 
@@ -403,9 +436,10 @@ function Register() {
               <button
                 type="submit"
                 className="auth-submit"
+                disabled={submitting}
               >
-                Create Account
-                <ArrowRight size={18} />
+                {submitting ? 'Creating Account...' : 'Create Account'}
+                {!submitting && <ArrowRight size={18} />}
               </button>
 
             </form>
