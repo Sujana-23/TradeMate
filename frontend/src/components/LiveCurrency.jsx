@@ -121,12 +121,19 @@ function Home({ data }) {
     (item) => item.code === selectedCurrency
   );
 
-  const formattedTime = data.time_last_update_utc
-    ? new Date(data.time_last_update_utc).toLocaleString(
-        'en-IN',
-        { dateStyle: 'medium', timeStyle: 'short' }
-      )
-    : 'Unavailable';
+  const formattedTime = data.time_last_update_unix
+  ? new Date(data.time_last_update_unix * 1000).toLocaleString(
+      'en-IN',
+      {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      }
+    )
+  : 'Unavailable';
 
   return (
     <main className="dashboard">
