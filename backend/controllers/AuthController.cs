@@ -24,6 +24,57 @@ public class AuthController : ControllerBase
         _configuration = configuration;
     }
 
+    // SEND OTP
+    [HttpPost("send-otp")]
+    public async Task<IActionResult> SendOtp(SendOtpRequest request)
+    {
+        try
+        {
+            await _authService.SendOtpAsync(request.Email);
+
+            return Ok(new
+            {
+                success = true,
+                message = "OTP sent successfully. Please check your email."
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, new
+            {
+                message = "Unable to send OTP. Please try again later."
+            });
+        }
+    }
+
+    // VERIFY OTP
+    [HttpPost("verify-otp")]
+    public async Task<IActionResult> VerifyOtp(VerifyOtpRequest request)
+    {
+        try
+        {
+            var verificationToken = await _authService.VerifyOtpAsync(
+                request.Email,
+                request.Otp
+            );
+
+            return Ok(new
+            {
+                success = true,
+                message = "Email verified successfully.",
+                verificationToken
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     // REGISTER
     [HttpPost("register")]
     public async Task<IActionResult> Register(RegisterRequest request)

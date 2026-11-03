@@ -19,4 +19,6 @@ public class RegisterRequest
     public string ConfirmPassword { get; set; } = "";
 
     public bool TermsAccepted { get; set; }
+
+    public string VerificationToken { get; set; } = "";
 }

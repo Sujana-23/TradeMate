@@ -1,4 +1,6 @@
+
 using System.Text;
+using backend.models;
 using backend.services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -8,7 +10,10 @@ var builder = WebApplication.CreateBuilder(args);
 // Controllers
 builder.Services.AddControllers();
 
-// Existing services
+// Memory Cache for OTP and verification tokens
+builder.Services.AddMemoryCache();
+
+// Existing HTTP clients
 builder.Services.AddHttpClient();
 builder.Services.AddHttpClient<ExchangeRateService>();
 builder.Services.AddHttpClient<HistoricalRateBackfill>();
@@ -16,8 +21,17 @@ builder.Services.AddHttpClient<HistoricalRateBackfill>();
 // Authentication service
 builder.Services.AddScoped<AuthService>();
 
+// Other existing services
 builder.Services.AddScoped<TrendsService>();
 builder.Services.AddScoped<ProfileService>();
+
+// Email configuration
+builder.Services.Configure<EmailSettings>(
+    builder.Configuration.GetSection("EmailSettings")
+);
+
+// Email service
+builder.Services.AddScoped<IEmailService, EmailService>();
 
 // JWT authentication
 var jwtKey = builder.Configuration["Jwt:Key"]
@@ -44,6 +58,7 @@ builder.Services.AddAuthentication(
     };
 });
 
+// Authorization
 builder.Services.AddAuthorization();
 
 // CORS
@@ -59,7 +74,7 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-
+// Middleware
 app.UseCors("AllowReactApp");
 
 app.UseAuthentication();
@@ -68,16 +83,17 @@ app.UseAuthorization();
 // Controllers
 app.MapControllers();
 
-// Existing exchange-rate endpoint - unchanged
+// Root endpoint
 app.MapGet("/", () => "TradeMate API is running");
 
+// Exchange rates endpoint
 app.MapGet("/api/exchangerates", async (ExchangeRateService service) =>
 {
     var rates = await service.GetRatesAsync();
     return rates;
 });
 
-// Existing backfill functionality
+// Historical rate backfill
 if (args.Contains("--backfill-rates"))
 {
     await app.Services

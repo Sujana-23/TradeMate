@@ -1,7 +1,11 @@
 
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { registerUser } from '../services/authService';
+import {
+  registerUser,
+  sendOtp,
+  verifyOtp
+} from '../services/authService';
 
 import {
   Mail,
@@ -20,6 +24,8 @@ import Terms from './Terms';
 function Register() {
   const navigate = useNavigate();
 
+  const [verificationToken, setVerificationToken] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     countryCode: '+91',
@@ -90,44 +96,71 @@ function Register() {
     setSuccess('');
   };
 
-  // FRONTEND DEMO OTP
-  const handleSendOTP = () => {
+  
+
+    
+  const handleSendOTP = async () => {
     setError('');
     setSuccess('');
 
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    if (!emailPattern.test(formData.email.trim())) {
+    const email = formData.email.trim().toLowerCase();
+
+    if (!emailPattern.test(email)) {
       setError('Please enter a valid email address.');
       return;
     }
 
-    setOtpSent(true);
-    setEmailVerified(false);
-    setOtp('');
+    try {
+      setOtpLoading(true);
 
-    setSuccess(
-      'Demo OTP generated! Use 123456 to verify your email.'
-    );
+      await sendOtp(email);
+
+      setOtpSent(true);
+      setEmailVerified(false);
+      setOtp('');
+      setVerificationToken('');
+
+      setSuccess(
+        'OTP sent successfully! Please check your email.'
+      );
+    } catch (error) {
+      setError(error.message || 'Unable to send OTP.');
+    } finally {
+      setOtpLoading(false);
+    }
   };
 
-  // VERIFY OTP
-  const handleVerifyOTP = () => {
+
+  const handleVerifyOTP = async () => {
     setError('');
     setSuccess('');
 
-    if (otp.length !== 6) {
+    if (!/^\d{6}$/.test(otp)) {
       setError('Please enter the 6-digit OTP.');
       return;
     }
 
-    if (otp === '123456') {
+    try {
+      setOtpLoading(true);
+
+      const data = await verifyOtp(
+        formData.email.trim().toLowerCase(),
+        otp
+      );
+
+      setVerificationToken(data.verificationToken);
       setEmailVerified(true);
+
       setSuccess('Email address verified successfully!');
-    } else {
-      setError('Invalid OTP. Please try again.');
+    } catch (error) {
+      setError(error.message || 'OTP verification failed.');
+    } finally {
+      setOtpLoading(false);
     }
   };
+
 
   
 const handleSubmit = async (event) => {
@@ -137,12 +170,11 @@ const handleSubmit = async (event) => {
   setSuccess('');
 
   // EMAIL VERIFICATION
-  if (!emailVerified) {
-    setError(
-      'Please verify your email address before creating your account.'
-    );
+  if (!emailVerified || !verificationToken) {
+    setError('Please verify your email address before creating your account.');
     return;
   }
+    
 
   // EMAIL VALIDATION
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -191,11 +223,12 @@ const handleSubmit = async (event) => {
       `${formData.countryCode}${phoneDigits}`;
 
     await registerUser({
-      email: formData.email.trim(),
+      email: formData.email.trim().toLowerCase(),
       phone: fullPhoneNumber,
       password: formData.password,
       confirmPassword: formData.confirmPassword,
-      termsAccepted: formData.agreeTerms
+      termsAccepted: formData.agreeTerms,
+      verificationToken: verificationToken
     });
 
     setSuccess('Registration successful! Redirecting to login...');
@@ -306,8 +339,11 @@ const handleSubmit = async (event) => {
                       type="button"
                       className="otp-send-button"
                       onClick={handleSendOTP}
+                      disabled={otpLoading}
                     >
-                      {otpSent ? 'Resend OTP' : 'Send OTP'}
+                      {otpLoading
+                        ? 'Sending...'
+                        : otpSent ? 'Resend OTP' : 'Send OTP'}
                     </button>
                   )}
 
@@ -355,14 +391,13 @@ const handleSubmit = async (event) => {
                       type="button"
                       className="otp-verify-button"
                       onClick={handleVerifyOTP}
+                      disabled={otpLoading}
                     >
-                      Verify OTP
+                      {otpLoading ? 'Verifying...' : 'Verify OTP'}
                     </button>
                   </div>
 
-                  <small className="auth-hint">
-                    Demo OTP: 123456
-                  </small>
+                  
                 </div>
               )}
 
