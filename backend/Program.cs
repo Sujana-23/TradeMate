@@ -16,6 +16,9 @@ builder.Services.AddHttpClient<HistoricalRateBackfill>();
 // Authentication service
 builder.Services.AddScoped<AuthService>();
 
+builder.Services.AddScoped<TrendsService>();
+builder.Services.AddScoped<ProfileService>();
+
 // JWT authentication
 var jwtKey = builder.Configuration["Jwt:Key"]
     ?? throw new Exception("JWT key missing.");
@@ -56,7 +59,6 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-app.UseHttpsRedirection();
 
 app.UseCors("AllowReactApp");
 

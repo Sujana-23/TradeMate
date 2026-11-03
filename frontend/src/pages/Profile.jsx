@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import {
   Mail,
@@ -15,38 +15,20 @@ import {
   Edit
 } from 'lucide-react';
 
+import api from '../services/api';
+
 import './Profile.css';
 
 function Profile() {
-  const [user, setUser] = useState(() => {
-    try {
-      const savedUser = localStorage.getItem('tradeMateUser');
-
-      return savedUser
-        ? JSON.parse(savedUser)
-        : {
-            email: '',
-            countryCode: '+91',
-            phone: '',
-            createdAt: new Date().toLocaleDateString(),
-            accountType: 'TradeMate User',
-            termsAccepted: false
-          };
-    } catch {
-      return {
-        email: '',
-        countryCode: '+91',
-        phone: '',
-        createdAt: '',
-        accountType: 'TradeMate User',
-        termsAccepted: false
-      };
-    }
-  });
+  const [user, setUser] = useState(null);
 
   const [editMode, setEditMode] = useState(false);
   const [changePassword, setChangePassword] = useState(false);
-  const [formData, setFormData] = useState(user);
+
+  const [formData, setFormData] = useState({
+    email: '',
+    phone: ''
+  });
 
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -56,7 +38,45 @@ function Profile() {
 
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState('success');
 
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  // GET LOGGED-IN USER PROFILE
+  const fetchProfile = async () => {
+    try {
+      setLoading(true);
+
+      const response = await api.get('/profile');
+
+      const profile = response.data;
+
+      setUser(profile);
+
+      setFormData({
+        email: profile.email || '',
+        phone: profile.phone || ''
+      });
+
+    } catch (error) {
+      setMessage(
+        error.response?.data?.message ||
+        'Unable to retrieve your profile.'
+      );
+
+      setMessageType('error');
+
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  // HANDLE PROFILE INPUTS
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -66,45 +86,63 @@ function Profile() {
     setMessage('');
   };
 
-  const handleSave = (e) => {
+  // UPDATE PROFILE
+  const handleSave = async (e) => {
     e.preventDefault();
 
     const email = formData.email.trim();
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setMessage('Please enter a valid email address.');
+      setMessageType('error');
       return;
     }
 
     const digits = formData.phone.replace(/\D/g, '');
 
-    if (!digits) {
+    if (!digits || digits.length < 7 || digits.length > 15) {
       setMessage('Please enter a valid phone number.');
+      setMessageType('error');
       return;
     }
 
-    const updatedUser = {
-      ...user,
-      ...formData,
-      email,
-      phone: digits
-    };
-
     try {
-      localStorage.setItem(
-        'tradeMateUser',
-        JSON.stringify(updatedUser)
+      setSaving(true);
+      setMessage('');
+
+      const response = await api.put('/profile', {
+        email,
+        phone: digits
+      });
+
+      const updatedProfile = response.data.profile;
+
+      setUser(updatedProfile);
+
+      setFormData({
+        email: updatedProfile.email || '',
+        phone: updatedProfile.phone || ''
+      });
+
+      setEditMode(false);
+
+      setMessage('Profile updated successfully!');
+      setMessageType('success');
+
+    } catch (error) {
+      setMessage(
+        error.response?.data?.message ||
+        'Unable to update profile.'
       );
 
-      setUser(updatedUser);
-      setFormData(updatedUser);
-      setEditMode(false);
-      setMessage('Profile updated successfully!');
-    } catch {
-      setMessage('Unable to save profile. Please try again.');
+      setMessageType('error');
+
+    } finally {
+      setSaving(false);
     }
   };
 
+  // HANDLE PASSWORD INPUTS
   const handlePasswordChange = (e) => {
     setPasswordData({
       ...passwordData,
@@ -114,7 +152,8 @@ function Profile() {
     setMessage('');
   };
 
-  const handlePasswordSave = (e) => {
+  // CHANGE PASSWORD
+  const handlePasswordSave = async (e) => {
     e.preventDefault();
 
     const {
@@ -125,6 +164,7 @@ function Profile() {
 
     if (!currentPassword || !newPassword || !confirmPassword) {
       setMessage('Please fill in all password fields.');
+      setMessageType('error');
       return;
     }
 
@@ -139,25 +179,67 @@ function Profile() {
       setMessage(
         'Password must contain uppercase, lowercase, number and special character.'
       );
+
+      setMessageType('error');
       return;
     }
 
     if (newPassword !== confirmPassword) {
       setMessage('New passwords do not match.');
+      setMessageType('error');
       return;
     }
 
-    setMessage(
-      'Password change requires backend authentication.'
-    );
+    try {
+      setSaving(true);
+      setMessage('');
+
+      const response = await api.put(
+        '/profile/change-password',
+        passwordData
+      );
+
+      setMessage(
+        response.data.message ||
+        'Password changed successfully!'
+      );
+
+      setMessageType('success');
+
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      });
+
+      setChangePassword(false);
+      setShowPassword(false);
+
+    } catch (error) {
+      setMessage(
+        error.response?.data?.message ||
+        'Unable to change password.'
+      );
+
+      setMessageType('error');
+
+    } finally {
+      setSaving(false);
+    }
   };
 
+  // CANCEL PROFILE EDIT
   const cancelEdit = () => {
-    setFormData(user);
+    setFormData({
+      email: user.email || '',
+      phone: user.phone || ''
+    });
+
     setEditMode(false);
     setMessage('');
   };
 
+  // TOGGLE PASSWORD FORM
   const togglePassword = () => {
     setChangePassword(!changePassword);
     setShowPassword(false);
@@ -169,6 +251,44 @@ function Profile() {
       confirmPassword: ''
     });
   };
+
+  // FORMAT DATE AS DD/MM/YYYY
+  const formatDate = (date) => {
+    if (!date) return 'Not available';
+
+    const parsedDate = new Date(date);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return 'Not available';
+    }
+
+    return parsedDate.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
+  // LOADING STATE
+  if (loading) {
+    return (
+      <main className="dashboard profile-dashboard">
+        <p>Loading your profile...</p>
+      </main>
+    );
+  }
+
+  // ERROR STATE
+  if (!user) {
+    return (
+      <main className="dashboard profile-dashboard">
+        <div className="profile-message" role="alert">
+          <AlertCircle size={17} />
+          <span>{message || 'Unable to load your profile.'}</span>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="dashboard profile-dashboard">
@@ -194,7 +314,11 @@ function Profile() {
             type="button"
             className="profile-heading-edit"
             onClick={() => {
-              setFormData(user);
+              setFormData({
+                email: user.email || '',
+                phone: user.phone || ''
+              });
+
               setEditMode(true);
               setMessage('');
             }}
@@ -220,7 +344,7 @@ function Profile() {
       {message && (
         <div
           className="profile-message"
-          role="status"
+          role={messageType === 'error' ? 'alert' : 'status'}
         >
           <AlertCircle size={17} />
 
@@ -243,6 +367,7 @@ function Profile() {
         <div className="profile-card">
 
           <div className="profile-card-heading">
+
             <div className="profile-icon">
               <UserRound size={19} />
             </div>
@@ -251,6 +376,7 @@ function Profile() {
               <h2>Personal Information</h2>
               <p>Update your contact information.</p>
             </div>
+
           </div>
 
           <form onSubmit={handleSave}>
@@ -260,6 +386,7 @@ function Profile() {
               {/* EMAIL */}
 
               <div className="profile-field">
+
                 <label>
                   <Mail size={15} />
                   Email Address
@@ -275,69 +402,50 @@ function Profile() {
                     required
                   />
                 ) : (
-                  <p>
-                    {user.email || 'Not available'}
-                  </p>
+                  <p>{user.email || 'Not available'}</p>
                 )}
+
               </div>
 
               {/* PHONE */}
 
               <div className="profile-field">
+
                 <label>
                   <Phone size={15} />
                   Phone Number
                 </label>
 
                 {editMode ? (
-                  <div className="profile-phone-input">
-
-                    <select
-                      name="countryCode"
-                      value={formData.countryCode || '+91'}
-                      onChange={handleChange}
-                    >
-                      <option value="+91">+91</option>
-                      <option value="+1">+1</option>
-                      <option value="+44">+44</option>
-                      <option value="+971">+971</option>
-                      <option value="+81">+81</option>
-                      <option value="+61">+61</option>
-                      <option value="+65">+65</option>
-                      <option value="+49">+49</option>
-                      <option value="+33">+33</option>
-                    </select>
-
-                    <input
-                      name="phone"
-                      type="tel"
-                      value={formData.phone || ''}
-                      onChange={handleChange}
-                      placeholder="Enter phone number"
-                      required
-                    />
-
-                  </div>
+                  <input
+                    name="phone"
+                    type="tel"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    placeholder="Enter phone number"
+                    required
+                  />
                 ) : (
                   <p>
                     {user.phone
-                      ? `${user.countryCode || '+91'} ${user.phone}`
+                      ? user.phone.replace(/^(\+\d{1,2})(\d+)$/, '$1 $2')
                       : 'Not available'}
                   </p>
                 )}
+
               </div>
 
               {/* ACCOUNT CREATED */}
 
               <div className="profile-field">
+
                 <label>
                   <CalendarDays size={15} />
                   Account Created
                 </label>
 
-                <p>
-                  {user.createdAt || 'Not available'}
-                </p>
+                <p>{formatDate(user.createdAt)}</p>
+
               </div>
 
             </div>
@@ -350,15 +458,17 @@ function Profile() {
                 <button
                   type="submit"
                   className="profile-save-button"
+                  disabled={saving}
                 >
                   <Save size={16} />
-                  Save Changes
+                  {saving ? 'Saving...' : 'Save Changes'}
                 </button>
 
                 <button
                   type="button"
                   className="profile-cancel-button"
                   onClick={cancelEdit}
+                  disabled={saving}
                 >
                   <X size={16} />
                   Cancel
@@ -378,6 +488,7 @@ function Profile() {
           <div className="profile-security-heading">
 
             <div className="profile-card-heading">
+
               <div className="profile-icon">
                 <LockKeyhole size={19} />
               </div>
@@ -386,6 +497,7 @@ function Profile() {
                 <h2>Security Settings</h2>
                 <p>Manage your account password.</p>
               </div>
+
             </div>
 
             <button
@@ -396,12 +508,12 @@ function Profile() {
               <LockKeyhole size={16} />
 
               {changePassword ? 'Cancel' : 'Change Password'}
+
             </button>
 
           </div>
 
           {changePassword && (
-
             <form
               className="password-change-form"
               onSubmit={handlePasswordSave}
@@ -448,6 +560,7 @@ function Profile() {
 
               <div className="password-requirements">
                 Password must contain:
+
                 <ul>
                   <li>At least 8 characters</li>
                   <li>One uppercase and one lowercase letter</li>
@@ -474,15 +587,15 @@ function Profile() {
                 <button
                   type="submit"
                   className="profile-save-button"
+                  disabled={saving}
                 >
                   <Save size={16} />
-                  Update Password
+                  {saving ? 'Updating...' : 'Update Password'}
                 </button>
 
               </div>
 
             </form>
-
           )}
 
         </div>

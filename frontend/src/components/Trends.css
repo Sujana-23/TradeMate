@@ -16,6 +16,22 @@
   min-width: 220px;
 }
 
+
+.trend-loading,
+.trend-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 250px;
+  color: #718096;
+}
+
+.trend-error {
+  color: #dc3545;
+}
+
+
 .trend-field label {
   display: flex;
   align-items: center;
