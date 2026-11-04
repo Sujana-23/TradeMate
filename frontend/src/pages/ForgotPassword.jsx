@@ -1,30 +1,51 @@
-
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Mail, ArrowLeft, ArrowRight, ShieldCheck } from 'lucide-react';
+
+import { forgotPassword } from '../services/authService';
 
 import './Auth.css';
 
 function ForgotPassword() {
+  const navigate = useNavigate();
+
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
     setError('');
     setMessage('');
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       setError('Please enter a valid email address.');
       return;
     }
 
-    // TODO: Connect this form to the password recovery API.
-    setMessage(
-      'Your email address is validated. Password recovery will be available once the backend API is connected.'
-    );
+    try {
+      setLoading(true);
+
+      const response = await forgotPassword(email.trim());
+
+      navigate(
+        `/reset-password?email=${encodeURIComponent(email.trim())}`,
+        {
+          state: {
+            message: response.message
+          }
+        }
+      );
+
+    } catch (err) {
+      setError(
+        err.message || 'Unable to process your request. Please try again.'
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -82,7 +103,7 @@ function ForgotPassword() {
 
               <p>
                 Enter your registered email address.
-                We'll help you reset your password.
+                We'll send you an OTP to reset your password.
               </p>
             </div>
 
@@ -116,6 +137,7 @@ function ForgotPassword() {
                     onChange={(e) => setEmail(e.target.value)}
                     autoComplete="email"
                     required
+                    disabled={loading}
                   />
                 </div>
               </div>
@@ -123,8 +145,9 @@ function ForgotPassword() {
               <button
                 type="submit"
                 className="auth-submit"
+                disabled={loading}
               >
-                Send Reset Link
+                {loading ? 'Sending OTP...' : 'Send OTP'}
                 <ArrowRight size={18} />
               </button>
 

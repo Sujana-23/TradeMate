@@ -22,6 +22,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 
 import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 import './App.css';
 
@@ -208,6 +209,11 @@ function App() {
                 ? <Navigate to="/dashboard" replace />
                 : <ForgotPassword />
             }
+          />
+
+          <Route
+            path="/reset-password"
+            element={<ResetPassword />}
           />
 
           {/* INVALID URL */}

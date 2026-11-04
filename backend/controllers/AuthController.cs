@@ -1,4 +1,3 @@
-
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -51,7 +50,7 @@ public class AuthController : ControllerBase
         }
     }
 
-    // VERIFY OTP
+    // VERIFY REGISTRATION OTP
     [HttpPost("verify-otp")]
     public async Task<IActionResult> VerifyOtp(VerifyOtpRequest request)
     {
@@ -129,6 +128,110 @@ public class AuthController : ControllerBase
                 user.Phone
             }
         });
+    }
+
+    // FORGOT PASSWORD - SEND RESET OTP
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword(
+        ForgotPasswordRequest request)
+    {
+        try
+        {
+            await _authService.ForgotPasswordAsync(request.Email);
+
+            return Ok(new
+            {
+                success = true,
+                message = "Password reset OTP sent to your email."
+            });
+        }
+        catch (ArgumentException)
+        {
+            return Ok(new
+            {
+                success = true,
+                message = "If the account exists, a password reset OTP will be sent to your email."
+            });
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, new
+            {
+                success = false,
+                message = "Unable to process request. Please try again later."
+            });
+        }
+    }
+
+    // VERIFY PASSWORD RESET OTP
+    [HttpPost("verify-reset-otp")]
+    public async Task<IActionResult> VerifyResetOtp(
+        VerifyResetOtpRequest request)
+    {
+        try
+        {
+            var verificationToken =
+                await _authService.VerifyPasswordResetOtpAsync(
+                    request.Email,
+                    request.Otp
+                );
+
+            return Ok(new
+            {
+                success = true,
+                message = "OTP verified successfully.",
+                verificationToken
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new
+            {
+                success = false,
+                message = ex.Message
+            });
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, new
+            {
+                success = false,
+                message = "Unable to verify OTP. Please try again later."
+            });
+        }
+    }
+
+    // RESET PASSWORD
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword(
+        ResetPasswordRequest request)
+    {
+        try
+        {
+            await _authService.ResetPasswordAsync(request);
+
+            return Ok(new
+            {
+                success = true,
+                message = "Password reset successfully."
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new
+            {
+                success = false,
+                message = ex.Message
+            });
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, new
+            {
+                success = false,
+                message = "Unable to reset password. Please try again later."
+            });
+        }
     }
 
     // GENERATE JWT

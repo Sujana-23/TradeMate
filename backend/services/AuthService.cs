@@ -1,4 +1,3 @@
-
 using System.Collections.Concurrent;
 using System.Data;
 using System.Security.Cryptography;
@@ -45,11 +44,13 @@ public class AuthService
             _otpSecret = Convert.FromBase64String(secret);
 
             if (_otpSecret.Length < 32)
-                throw new InvalidOperationException("OTP secret must contain at least 32 bytes.");
+                throw new InvalidOperationException(
+                    "OTP secret must contain at least 32 bytes.");
         }
         catch (FormatException)
         {
-            throw new InvalidOperationException("OTP secret must be valid Base64.");
+            throw new InvalidOperationException(
+                "OTP secret must be valid Base64.");
         }
     }
 
@@ -61,9 +62,19 @@ public class AuthService
         return email.Trim().ToLowerInvariant();
     }
 
-    private static string OtpCacheKey(string email) => $"otp:{email}";
+    // REGISTRATION CACHE KEYS
+    private static string OtpCacheKey(string email)
+        => $"otp:{email}";
 
-    private static string TokenCacheKey(string email) => $"verification:{email}";
+    private static string TokenCacheKey(string email)
+        => $"verification:{email}";
+
+    // FORGOT PASSWORD CACHE KEYS
+    private static string ResetOtpCacheKey(string email)
+        => $"password-reset-otp:{email}";
+
+    private static string ResetVerificationCacheKey(string email)
+        => $"password-reset-verification:{email}";
 
     private string HashOtp(string otp)
     {
@@ -414,4 +425,328 @@ public class AuthService
 
         return user;
     }
+
+    // FORGOT PASSWORD - SEND RESET OTP
+    
+    public async Task ForgotPasswordAsync(string email)
+    {
+        email = NormalizeEmail(email);
+
+        var gate = EmailLocks.GetOrAdd(
+            email, _ => new SemaphoreSlim(1, 1));
+
+        await gate.WaitAsync();
+
+        try
+        {
+            await using var connection =
+                new SqlConnection(_connectionString);
+
+            await connection.OpenAsync();
+
+            const string sql = """
+                SELECT COUNT(*)
+                FROM dbo.Users
+                WHERE Email = @Email AND IsActive = 1;
+                """;
+
+            await using var command =
+                new SqlCommand(sql, connection);
+
+            command.Parameters.Add(
+                "@Email", SqlDbType.NVarChar, 255
+            ).Value = email;
+
+            int exists = Convert.ToInt32(
+                await command.ExecuteScalarAsync());
+
+            if (exists == 0)
+                throw new ArgumentException("Account not found.");
+
+            // Generate 6-digit OTP
+            var otp = OtpGenerator.GenerateOtp();
+
+            // Remove previous reset verification
+            _cache.Remove(ResetVerificationCacheKey(email));
+
+            // Store hashed OTP for 5 minutes
+            _cache.Set(
+                ResetOtpCacheKey(email),
+                new OtpState
+                {
+                    Hash = HashOtp(otp),
+                    Attempts = 0
+                },
+                TimeSpan.FromMinutes(5)
+            );
+
+            string htmlBody =
+                EmailTemplates.ForgotPasswordOtpEmail(otp);
+
+            try
+            {
+                await _emailService.SendEmailAsync(
+                    email,
+                    "TradeMate Password Reset OTP",
+                    htmlBody
+                );
+            }
+            catch
+            {
+                _cache.Remove(ResetOtpCacheKey(email));
+                throw;
+            }
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    // VERIFY PASSWORD RESET OTP
+    public async Task<string> VerifyResetOtpAsync(
+        string email,
+        string otp)
+    {
+        email = NormalizeEmail(email);
+
+        if (string.IsNullOrWhiteSpace(otp) ||
+            otp.Length != 6 ||
+            otp.Any(c => c < '0' || c > '9'))
+        {
+            throw new ArgumentException("Invalid OTP.");
+        }
+
+        var gate = EmailLocks.GetOrAdd(
+            email, _ => new SemaphoreSlim(1, 1));
+
+        await gate.WaitAsync();
+
+        try
+        {
+            if (!_cache.TryGetValue<OtpState>(
+                ResetOtpCacheKey(email), out var state) ||
+                state == null)
+            {
+                throw new ArgumentException(
+                    "Password reset OTP expired or not found. Request a new OTP.");
+            }
+
+            state.Attempts++;
+
+            if (state.Attempts > MaxOtpAttempts)
+            {
+                _cache.Remove(ResetOtpCacheKey(email));
+
+                throw new ArgumentException(
+                    "Maximum OTP attempts exceeded. Request a new OTP.");
+            }
+
+            var submittedHash = HashOtp(otp);
+
+            if (!HashMatches(state.Hash, submittedHash))
+            {
+                if (state.Attempts >= MaxOtpAttempts)
+                    _cache.Remove(ResetOtpCacheKey(email));
+
+                throw new ArgumentException(
+                    "Incorrect OTP. Please try again.");
+            }
+
+            // OTP can only be used once.
+            _cache.Remove(ResetOtpCacheKey(email));
+
+            var tokenBytes = RandomNumberGenerator.GetBytes(32);
+
+            var verificationToken = Convert.ToBase64String(tokenBytes)
+                .TrimEnd('=')
+                .Replace('+', '-')
+                .Replace('/', '_');
+
+            _cache.Set(
+                ResetVerificationCacheKey(email),
+                new VerificationState
+                {
+                    Hash = HashToken(verificationToken)
+                },
+                TimeSpan.FromMinutes(10)
+            );
+
+            return verificationToken;
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+    
+    public async Task<string> VerifyPasswordResetOtpAsync(
+        string email,
+        string otp)
+    {
+        email = NormalizeEmail(email);
+
+        if (string.IsNullOrWhiteSpace(otp) ||
+            otp.Length != 6 ||
+            otp.Any(c => c < '0' || c > '9'))
+        {
+            throw new ArgumentException("Invalid OTP.");
+        }
+
+        var gate = EmailLocks.GetOrAdd(
+            email, _ => new SemaphoreSlim(1, 1));
+
+        await gate.WaitAsync();
+
+        try
+        {
+            if (!_cache.TryGetValue<OtpState>(
+                ResetOtpCacheKey(email), out var state) ||
+                state == null)
+            {
+                throw new ArgumentException(
+                    "OTP expired. Please request a new OTP.");
+            }
+
+            state.Attempts++;
+
+            if (state.Attempts > MaxOtpAttempts)
+            {
+                _cache.Remove(ResetOtpCacheKey(email));
+
+                throw new ArgumentException(
+                    "Maximum attempts exceeded. Request a new OTP.");
+            }
+
+            string submittedHash = HashOtp(otp);
+
+            if (!HashMatches(state.Hash, submittedHash))
+            {
+                if (state.Attempts >= MaxOtpAttempts)
+                    _cache.Remove(ResetOtpCacheKey(email));
+
+                throw new ArgumentException(
+                    "Incorrect OTP. Please try again.");
+            }
+
+            // Consume OTP after successful verification
+            _cache.Remove(ResetOtpCacheKey(email));
+
+            // Generate secure random verification token
+            var tokenBytes = RandomNumberGenerator.GetBytes(32);
+
+            var verificationToken =
+                Convert.ToBase64String(tokenBytes)
+                    .TrimEnd('=')
+                    .Replace('+', '-')
+                    .Replace('/', '_');
+
+            // Store only token hash for 10 minutes
+            _cache.Set(
+                ResetVerificationCacheKey(email),
+                new VerificationState
+                {
+                    Hash = HashToken(verificationToken)
+                },
+                TimeSpan.FromMinutes(10)
+            );
+
+            return verificationToken;
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    // RESET PASSWORD
+    
+    public async Task ResetPasswordAsync(
+        ResetPasswordRequest request)
+    {
+        if (request.NewPassword != request.ConfirmPassword)
+            throw new ArgumentException("Passwords do not match.");
+
+        if (request.NewPassword.Length < 8)
+            throw new ArgumentException(
+                "Password must contain at least 8 characters.");
+
+        string email = NormalizeEmail(request.Email);
+
+        if (string.IsNullOrWhiteSpace(request.VerificationToken))
+            throw new ArgumentException(
+                "Password verification token is required.");
+
+        var gate = EmailLocks.GetOrAdd(
+            email, _ => new SemaphoreSlim(1, 1));
+
+        await gate.WaitAsync();
+
+        try
+        {
+            if (!_cache.TryGetValue<VerificationState>(
+                ResetVerificationCacheKey(email), out var state) ||
+                state == null)
+            {
+                throw new ArgumentException(
+                    "Verification expired. Please verify your OTP again.");
+            }
+
+            string submittedHash =
+                HashToken(request.VerificationToken);
+
+            if (!HashMatches(state.Hash, submittedHash))
+                throw new ArgumentException(
+                    "Invalid verification token.");
+
+            await using var connection =
+                new SqlConnection(_connectionString);
+
+            await connection.OpenAsync();
+
+            var user = new User
+            {
+                Email = email
+            };
+
+            string passwordHash =
+                _passwordHasher.HashPassword(
+                    user, request.NewPassword);
+
+            const string sql = """
+                UPDATE dbo.Users
+                SET PasswordHash = @PasswordHash
+                WHERE Email = @Email AND IsActive = 1;
+                """;
+
+            await using var command =
+                new SqlCommand(sql, connection);
+
+            command.Parameters.Add(
+                "@PasswordHash",
+                SqlDbType.NVarChar,
+                255
+            ).Value = passwordHash;
+
+            command.Parameters.Add(
+                "@Email",
+                SqlDbType.NVarChar,
+                255
+            ).Value = email;
+
+            int rows = await command.ExecuteNonQueryAsync();
+
+            if (rows == 0)
+                throw new ArgumentException(
+                    "Unable to reset password.");
+
+            // Consume verification token after successful update
+            _cache.Remove(ResetVerificationCacheKey(email));
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
 }
