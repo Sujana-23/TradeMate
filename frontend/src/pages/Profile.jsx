@@ -36,6 +36,33 @@ function Profile() {
     confirmPassword: ''
   });
 
+  // CURRENT PASSWORD ERROR STATE
+  const [currentPasswordError, setCurrentPasswordError] = useState('');
+
+  // NEW PASSWORD FOCUS STATE
+  const [newPasswordFocused, setNewPasswordFocused] = useState(false);
+
+  // LIVE PASSWORD VALIDATION
+  const passwordRules = {
+    minLength: passwordData.newPassword.length >= 8,
+    uppercase: /[A-Z]/.test(passwordData.newPassword),
+    lowercase: /[a-z]/.test(passwordData.newPassword),
+    number: /[0-9]/.test(passwordData.newPassword),
+    special: /[^A-Za-z0-9]/.test(passwordData.newPassword)
+  };
+
+  const isPasswordValid =
+    Object.values(passwordRules).every(Boolean);
+
+  const passwordsMatch =
+    passwordData.confirmPassword.length > 0 &&
+    passwordData.newPassword === passwordData.confirmPassword;
+
+  const canUpdatePassword =
+    passwordData.currentPassword.length > 0 &&
+    isPasswordValid &&
+    passwordsMatch;
+
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('success');
@@ -144,10 +171,16 @@ function Profile() {
 
   // HANDLE PASSWORD INPUTS
   const handlePasswordChange = (e) => {
-    setPasswordData({
-      ...passwordData,
-      [e.target.name]: e.target.value
-    });
+    const { name, value } = e.target;
+
+    setPasswordData((prev) => ({
+      ...prev,
+      [name]: value
+    }));
+
+    if (name === 'currentPassword') {
+      setCurrentPasswordError('');
+    }
 
     setMessage('');
   };
@@ -168,18 +201,8 @@ function Profile() {
       return;
     }
 
-    const strongPassword =
-      newPassword.length >= 8 &&
-      /[A-Z]/.test(newPassword) &&
-      /[a-z]/.test(newPassword) &&
-      /[0-9]/.test(newPassword) &&
-      /[^A-Za-z0-9]/.test(newPassword);
-
-    if (!strongPassword) {
-      setMessage(
-        'Password must contain uppercase, lowercase, number and special character.'
-      );
-
+    if (!isPasswordValid) {
+      setMessage('Please satisfy all password requirements.');
       setMessageType('error');
       return;
     }
@@ -193,6 +216,7 @@ function Profile() {
     try {
       setSaving(true);
       setMessage('');
+      setCurrentPasswordError('');
 
       const response = await api.put(
         '/profile/change-password',
@@ -214,14 +238,19 @@ function Profile() {
 
       setChangePassword(false);
       setShowPassword(false);
+      setNewPasswordFocused(false);
 
     } catch (error) {
-      setMessage(
-        error.response?.data?.message ||
-        'Unable to change password.'
-      );
+      const backendMessage = error.response?.data?.message;
 
-      setMessageType('error');
+      if (backendMessage === 'Current password is incorrect.') {
+        setCurrentPasswordError(backendMessage);
+      } else {
+        setMessage(
+          backendMessage || 'Unable to change password.'
+        );
+        setMessageType('error');
+      }
 
     } finally {
       setSaving(false);
@@ -244,6 +273,8 @@ function Profile() {
     setChangePassword(!changePassword);
     setShowPassword(false);
     setMessage('');
+    setCurrentPasswordError('');
+    setNewPasswordFocused(false);
 
     setPasswordData({
       currentPassword: '',
@@ -513,13 +544,18 @@ function Profile() {
 
           </div>
 
+          {/* PASSWORD CHANGE FORM */}
+
           {changePassword && (
             <form
               className="password-change-form"
               onSubmit={handlePasswordSave}
             >
 
+              {/* CURRENT PASSWORD */}
+
               <div className="profile-field">
+
                 <label>Current Password</label>
 
                 <input
@@ -529,10 +565,23 @@ function Profile() {
                   onChange={handlePasswordChange}
                   placeholder="Enter current password"
                   required
+                  className={
+                    currentPasswordError ? 'password-invalid' : ''
+                  }
                 />
+
+                {currentPasswordError && (
+                  <p className="password-match-error">
+                    ✕ {currentPasswordError}
+                  </p>
+                )}
+
               </div>
 
+              {/* NEW PASSWORD */}
+
               <div className="profile-field">
+
                 <label>New Password</label>
 
                 <input
@@ -540,12 +589,52 @@ function Profile() {
                   name="newPassword"
                   value={passwordData.newPassword}
                   onChange={handlePasswordChange}
+                  onFocus={() => setNewPasswordFocused(true)}
                   placeholder="Enter new password"
                   required
+                  className={
+                    passwordData.newPassword.length === 0
+                      ? ''
+                      : isPasswordValid
+                        ? 'password-valid'
+                        : 'password-invalid'
+                  }
                 />
+
+                {/* SHOW ONLY AFTER TYPING */}
+
+                {passwordData.newPassword.length > 0 && (
+                  <div className="password-requirements">
+
+                    <span className={passwordRules.minLength ? 'valid' : 'invalid'}>
+                      {passwordRules.minLength ? '✓' : '✕'} At least 8 characters
+                    </span>
+
+                    <span className={passwordRules.uppercase ? 'valid' : 'invalid'}>
+                      {passwordRules.uppercase ? '✓' : '✕'} One uppercase letter
+                    </span>
+
+                    <span className={passwordRules.lowercase ? 'valid' : 'invalid'}>
+                      {passwordRules.lowercase ? '✓' : '✕'} One lowercase letter
+                    </span>
+
+                    <span className={passwordRules.number ? 'valid' : 'invalid'}>
+                      {passwordRules.number ? '✓' : '✕'} One number
+                    </span>
+
+                    <span className={passwordRules.special ? 'valid' : 'invalid'}>
+                      {passwordRules.special ? '✓' : '✕'} One special character
+                    </span>
+
+                  </div>
+                )}
+
               </div>
 
-              <div className="profile-field">
+              {/* CONFIRM PASSWORD */}
+
+              <div className="profile-field password-confirm-field">
+
                 <label>Confirm New Password</label>
 
                 <input
@@ -555,18 +644,30 @@ function Profile() {
                   onChange={handlePasswordChange}
                   placeholder="Confirm new password"
                   required
+                  className={
+                    passwordData.confirmPassword.length === 0
+                      ? ''
+                      : passwordsMatch
+                        ? 'password-valid'
+                        : 'password-invalid'
+                  }
                 />
+
+                {passwordData.confirmPassword.length > 0 && (
+                  <p className={
+                    passwordsMatch
+                      ? 'password-match-success'
+                      : 'password-match-error'
+                  }>
+                    {passwordsMatch
+                      ? '✓ Passwords match'
+                      : '✕ Passwords do not match'}
+                  </p>
+                )}
+
               </div>
 
-              <div className="password-requirements">
-                Password must contain:
-
-                <ul>
-                  <li>At least 8 characters</li>
-                  <li>One uppercase and one lowercase letter</li>
-                  <li>One number and one special character</li>
-                </ul>
-              </div>
+              {/* PASSWORD ACTIONS */}
 
               <div className="password-actions">
 
@@ -587,9 +688,10 @@ function Profile() {
                 <button
                   type="submit"
                   className="profile-save-button"
-                  disabled={saving}
+                  disabled={saving || !canUpdatePassword}
                 >
                   <Save size={16} />
+
                   {saving ? 'Updating...' : 'Update Password'}
                 </button>
 

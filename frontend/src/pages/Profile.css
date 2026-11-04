@@ -349,21 +349,7 @@
    PASSWORD REQUIREMENTS
 ================================ */
 
-.password-requirements {
-  grid-column: 1 / -1;
-  padding: 14px 16px;
-  border: 1px solid #e5eaf2;
-  border-radius: 8px;
-  background: #f7faff;
-  color: #526178;
-  font-size: 12px;
-  line-height: 1.8;
-}
 
-.password-requirements ul {
-  margin: 5px 0 0;
-  padding-left: 20px;
-}
 
 /* ================================
    PASSWORD ACTIONS
@@ -533,5 +519,46 @@
 
   .password-change-form .profile-save-button {
     width: 100%;
+  }
+}
+
+/* HORIZONTAL PASSWORD REQUIREMENTS */
+
+.password-requirements {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin-top: 4px;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.password-requirements span {
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 600;
+  transition: color 0.2s ease;
+}
+
+.password-requirements .invalid {
+  color: #dc5555;
+}
+
+.password-requirements .valid {
+  color: #279b62;
+}
+
+/* MOBILE */
+
+@media (max-width: 480px) {
+  .password-requirements {
+    gap: 7px 10px;
+  }
+
+  .password-requirements span {
+    font-size: 10px;
   }
 }
