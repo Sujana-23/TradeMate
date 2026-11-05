@@ -180,23 +180,23 @@ function App() {
           {/* PROTECTED PROFILE */}
 
           <Route
-            path="/profile"
-            element={
-              isLoggedIn ? (
-                <>
-                  <Navbar onLogout={handleLogout} />
+  path="/profile"
+  element={
+    isLoggedIn ? (
+      <>
+        <Navbar onLogout={handleLogout} />
 
-                  <Profile />
+        <Profile onLogout={handleLogout} />
 
-                  <footer className="footer">
-                    TradeMate · International Currency Monitor
-                  </footer>
-                </>
-              ) : (
-                <Navigate to="/login" replace />
-              )
-            }
-          />
+        <footer className="footer">
+          TradeMate · International Currency Monitor
+        </footer>
+      </>
+    ) : (
+      <Navigate to="/login" replace />
+    )
+  }
+/>
 
           {/* FORGOT PASSWORD PLACEHOLDER */}
 

@@ -18,6 +18,7 @@ public class ProfileController : ControllerBase
     {
         _profileService = profileService;
     }
+    
 
     // GET: api/profile
     [HttpGet]
@@ -125,7 +126,34 @@ public class ProfileController : ControllerBase
             return BadRequest(new { message = ex.Message });
         }
     }
+// DELETE: api/profile
+[HttpDelete]
+public async Task<IActionResult> DeleteAccount()
+{
+    int? userId = GetLoggedInUserId();
 
+    if (userId == null)
+        return Unauthorized();
+
+    bool deleted = await _profileService.DeleteAccountAsync(
+        userId.Value
+    );
+
+    if (!deleted)
+    {
+        return NotFound(new
+        {
+            success = false,
+            message = "User account not found or already inactive."
+        });
+    }
+
+    return Ok(new
+    {
+        success = true,
+        message = "Your account has been deactivated successfully."
+    });
+}
     // GET USER ID FROM JWT
     private int? GetLoggedInUserId()
     {

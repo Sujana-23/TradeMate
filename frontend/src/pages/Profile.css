@@ -214,6 +214,63 @@
   font-weight: 500;
   overflow-wrap: anywhere;
 }
+/* PROFILE HEADING ACTIONS */
+
+.profile-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* DELETE ACCOUNT BUTTON */
+
+.profile-delete-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 17px;
+  border: 1px solid #dc5555;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #dc5555;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.profile-delete-button:hover {
+  background: #dc5555;
+  color: #ffffff;
+}
+
+.profile-delete-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* MOBILE RESPONSIVE */
+
+@media (max-width: 768px) {
+  .profile-heading-actions {
+    width: 100%;
+  }
+
+  .profile-heading-actions button {
+    flex: 1;
+  }
+}
+
+@media (max-width: 480px) {
+  .profile-heading-actions {
+    flex-direction: column;
+  }
+
+  .profile-heading-actions button {
+    width: 100%;
+  }
+}
 
 /* ================================
    INPUTS

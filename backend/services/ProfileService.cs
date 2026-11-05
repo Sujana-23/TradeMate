@@ -55,107 +55,60 @@ public class ProfileService
     }
 
     // UPDATE PROFILE
-    public async Task<bool> UpdateProfileAsync(
-        int userId,
-        UpdateProfileDto request)
-    {
-        string email = request.Email.Trim().ToLowerInvariant();
+   
+// UPDATE PROFILE (PHONE NUMBER ONLY)
+public async Task<bool> UpdateProfileAsync(
+    int userId,
+    UpdateProfileDto request)
+{
+    string? phone = string.IsNullOrWhiteSpace(request.Phone)
+        ? null
+        : request.Phone.Trim();
 
-        if (!Regex.IsMatch(
-            email,
-            @"^[^\s@]+@[^\s@]+\.[^\s@]+$"))
+    if (phone != null)
+    {
+        string digits = Regex.Replace(phone, @"\D", "");
+
+        if (digits.Length < 7 || digits.Length > 15)
         {
             throw new ArgumentException(
-                "Please enter a valid email address.");
+                "Please enter a valid phone number.");
         }
 
-        string? phone = string.IsNullOrWhiteSpace(request.Phone)
-            ? null
-            : request.Phone.Trim();
-
-        if (phone != null)
-        {
-            string digits = Regex.Replace(phone, @"\D", "");
-
-            if (digits.Length < 7 || digits.Length > 15)
-            {
-                throw new ArgumentException(
-                    "Please enter a valid phone number.");
-            }
-
-            phone = digits;
-        }
-
-        await using var connection =
-            new SqlConnection(_connectionString);
-
-        await connection.OpenAsync();
-
-        const string sql = """
-            UPDATE dbo.Users
-            SET Email = @Email,
-                Phone = @Phone
-            WHERE UserId = @UserId
-              AND IsActive = 1
-              AND NOT EXISTS (
-                  SELECT 1
-                  FROM dbo.Users
-                  WHERE Email = @Email
-                    AND UserId <> @UserId
-              );
-            """;
-
-        await using var command = new SqlCommand(sql, connection);
-
-        command.Parameters.Add("@Email", SqlDbType.NVarChar, 255)
-            .Value = email;
-
-        command.Parameters.Add("@Phone", SqlDbType.NVarChar, 16)
-            .Value = (object?)phone ?? DBNull.Value;
-
-        command.Parameters.Add("@UserId", SqlDbType.Int)
-            .Value = userId;
-
-        try
-        {
-            int rowsAffected = await command.ExecuteNonQueryAsync();
-
-            if (rowsAffected > 0)
-                return true;
-
-            // Distinguish duplicate email from missing/inactive user.
-            const string checkSql = """
-                SELECT COUNT(*)
-                FROM dbo.Users
-                WHERE Email = @Email
-                  AND UserId <> @UserId;
-                """;
-
-            await using var checkCommand =
-                new SqlCommand(checkSql, connection);
-
-            checkCommand.Parameters.Add("@Email", SqlDbType.NVarChar, 255)
-                .Value = email;
-
-            checkCommand.Parameters.Add("@UserId", SqlDbType.Int)
-                .Value = userId;
-
-            int duplicateCount =
-                (int)await checkCommand.ExecuteScalarAsync();
-
-            if (duplicateCount > 0)
-                throw new InvalidOperationException(
-                    "This email address is already registered.");
-
-            return false;
-        }
-        catch (SqlException ex)
-            when (ex.Number == 2601 || ex.Number == 2627)
-        {
-            throw new InvalidOperationException(
-                "This email address is already registered.");
-        }
+        phone = digits;
     }
+    else
+    {
+        throw new ArgumentException(
+            "Please enter a valid phone number.");
+    }
+
+    await using var connection =
+        new SqlConnection(_connectionString);
+
+    await connection.OpenAsync();
+
+    const string sql = """
+        UPDATE dbo.Users
+        SET Phone = @Phone
+        WHERE UserId = @UserId
+          AND IsActive = 1;
+        """;
+
+    await using var command =
+        new SqlCommand(sql, connection);
+
+    command.Parameters.Add("@Phone", SqlDbType.VarChar, 16)
+        .Value = phone;
+
+    command.Parameters.Add("@UserId", SqlDbType.Int)
+        .Value = userId;
+
+    int rowsAffected = await command.ExecuteNonQueryAsync();
+
+    return rowsAffected > 0;
+}
+
 
     // CHANGE PASSWORD
     public async Task<bool> ChangePasswordAsync(
@@ -271,4 +224,27 @@ public class ProfileService
 
         return await updateCommand.ExecuteNonQueryAsync() > 0;
     }
+    // DELETE ACCOUNT (SOFT DELETE)
+public async Task<bool> DeleteAccountAsync(int userId)
+{
+    await using var connection =
+        new SqlConnection(_connectionString);
+
+    await connection.OpenAsync();
+
+    const string sql = """
+        UPDATE dbo.Users
+        SET IsActive = 0
+        WHERE UserId = @UserId
+          AND IsActive = 1;
+        """;
+
+    await using var command = new SqlCommand(sql, connection);
+
+    command.Parameters.Add("@UserId", SqlDbType.Int).Value = userId;
+
+    int rowsAffected = await command.ExecuteNonQueryAsync();
+
+    return rowsAffected > 0;
+}
 }

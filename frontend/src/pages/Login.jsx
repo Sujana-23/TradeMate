@@ -218,23 +218,7 @@ function Login({ onLogin }) {
 
             </form>
 
-            <div className="auth-divider">
-              <span>OR CONTINUE WITH</span>
-            </div>
-
-            {/* GOOGLE SIGN IN */}
-
-            <button
-              type="button"
-              className="google-button"
-              onClick={() =>
-                alert('Google sign-in will be integrated later.')
-              }
-            >
-              <GoogleIcon />
-              Continue with Google
-            </button>
-
+           
             <p className="auth-switch">
               Don't have an account?
               <Link to="/register"> Create account</Link>

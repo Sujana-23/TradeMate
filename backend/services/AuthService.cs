@@ -386,7 +386,7 @@ public class AuthService
             SELECT UserId, Email, Phone, PasswordHash,
                    TermsAccepted, CreatedAt, IsActive
             FROM dbo.Users
-            WHERE Email = @Email;
+            WHERE Email = @Email  AND IsActive = 1;
             """;
 
         await using var command = new SqlCommand(sql, connection);

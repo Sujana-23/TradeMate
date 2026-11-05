@@ -588,20 +588,7 @@ const handleSubmit = async (event) => {
 
             </form>
 
-            <div className="auth-divider">
-              <span>OR CONTINUE WITH</span>
-            </div>
-
-            <button
-              type="button"
-              className="google-button"
-              onClick={() =>
-                alert('Google sign-in will be integrated later.')
-              }
-            >
-              Continue with Google
-            </button>
-
+            
             <p className="auth-switch">
               Already have an account?
               <Link to="/login"> Sign in</Link>

@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from 'react';
-
+import { useNavigate } from 'react-router-dom';
 import {
   Mail,
   Phone,
@@ -12,16 +12,17 @@ import {
   Eye,
   EyeOff,
   AlertCircle,
-  Edit
+  Edit,
+  Trash2
 } from 'lucide-react';
 
 import api from '../services/api';
 
 import './Profile.css';
 
-function Profile() {
+function Profile({ onLogout }) {
   const [user, setUser] = useState(null);
-
+  const navigate = useNavigate();
   const [editMode, setEditMode] = useState(false);
   const [changePassword, setChangePassword] = useState(false);
 
@@ -114,60 +115,51 @@ function Profile() {
   };
 
   // UPDATE PROFILE
-  const handleSave = async (e) => {
-    e.preventDefault();
+const handleSave = async (e) => {
+  e.preventDefault();
 
-    const email = formData.email.trim();
+  const digits = formData.phone.replace(/\D/g, '');
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setMessage('Please enter a valid email address.');
-      setMessageType('error');
-      return;
-    }
+  if (!digits || digits.length < 7 || digits.length > 15) {
+    setMessage('Please enter a valid phone number.');
+    setMessageType('error');
+    return;
+  }
 
-    const digits = formData.phone.replace(/\D/g, '');
+  try {
+    setSaving(true);
+    setMessage('');
 
-    if (!digits || digits.length < 7 || digits.length > 15) {
-      setMessage('Please enter a valid phone number.');
-      setMessageType('error');
-      return;
-    }
+    const response = await api.put('/profile', {
+      phone: digits
+    });
 
-    try {
-      setSaving(true);
-      setMessage('');
+    const updatedProfile = response.data.profile;
 
-      const response = await api.put('/profile', {
-        email,
-        phone: digits
-      });
+    setUser(updatedProfile);
 
-      const updatedProfile = response.data.profile;
+    setFormData({
+      email: updatedProfile.email || '',
+      phone: updatedProfile.phone || ''
+    });
 
-      setUser(updatedProfile);
+    setEditMode(false);
 
-      setFormData({
-        email: updatedProfile.email || '',
-        phone: updatedProfile.phone || ''
-      });
+    setMessage('Profile updated successfully!');
+    setMessageType('success');
 
-      setEditMode(false);
+  } catch (error) {
+    setMessage(
+      error.response?.data?.message ||
+      'Unable to update profile.'
+    );
 
-      setMessage('Profile updated successfully!');
-      setMessageType('success');
+    setMessageType('error');
 
-    } catch (error) {
-      setMessage(
-        error.response?.data?.message ||
-        'Unable to update profile.'
-      );
-
-      setMessageType('error');
-
-    } finally {
-      setSaving(false);
-    }
-  };
+  } finally {
+    setSaving(false);
+  }
+};
 
   // HANDLE PASSWORD INPUTS
   const handlePasswordChange = (e) => {
@@ -320,7 +312,40 @@ function Profile() {
       </main>
     );
   }
+// DELETE ACCOUNT
+const handleDeleteAccount = async () => {
+  const confirmed = window.confirm(
+    'Are you sure you want to delete your account? This action cannot be undone.'
+  );
 
+  if (!confirmed) return;
+
+  try {
+    setSaving(true);
+    setMessage('');
+
+    await api.delete('/profile');
+
+    alert('Your account has been deleted successfully.');
+
+    // Clear authentication and update App login state
+    onLogout();
+
+    // Redirect to login page
+    navigate('/login', { replace: true });
+
+  } catch (error) {
+    setMessage(
+      error.response?.data?.message ||
+      'Unable to delete your account.'
+    );
+
+    setMessageType('error');
+
+  } finally {
+    setSaving(false);
+  }
+};
   return (
     <main className="dashboard profile-dashboard">
 
@@ -340,25 +365,42 @@ function Profile() {
           </p>
         </div>
 
-        {!editMode && (
-          <button
-            type="button"
-            className="profile-heading-edit"
-            onClick={() => {
-              setFormData({
-                email: user.email || '',
-                phone: user.phone || ''
-              });
+       {!editMode && (
+  <div className="profile-heading-actions">
 
-              setEditMode(true);
-              setMessage('');
-            }}
-          >
-            <Edit size={16} />
-            Edit Profile
-          </button>
-        )}
+    {/* DELETE ACCOUNT BUTTON */}
 
+    <button
+      type="button"
+      className="profile-delete-button"
+      onClick={handleDeleteAccount}
+      disabled={saving}
+    >
+      <Trash2 size={16} />
+      Delete Account
+    </button>
+
+    {/* EDIT PROFILE BUTTON */}
+
+    <button
+      type="button"
+      className="profile-heading-edit"
+      onClick={() => {
+        setFormData({
+          email: user.email || '',
+          phone: user.phone || ''
+        });
+
+        setEditMode(true);
+        setMessage('');
+      }}
+    >
+      <Edit size={16} />
+      Edit Profile
+    </button>
+
+  </div>
+)}
       </section>
 
       {/* ACCOUNT HEADING */}
@@ -414,29 +456,19 @@ function Profile() {
 
             <div className="profile-details">
 
-              {/* EMAIL */}
+             {/* EMAIL */}
 
-              <div className="profile-field">
+<div className="profile-field">
 
-                <label>
-                  <Mail size={15} />
-                  Email Address
-                </label>
+  <label>
+    <Mail size={15} />
+    Email Address
+  </label>
 
-                {editMode ? (
-                  <input
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    placeholder="Enter your email"
-                    required
-                  />
-                ) : (
-                  <p>{user.email || 'Not available'}</p>
-                )}
+    <p>{user.email || 'Not available'}</p>
+  
 
-              </div>
+</div>
 
               {/* PHONE */}
 
