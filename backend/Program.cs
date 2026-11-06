@@ -66,12 +66,15 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
     {
-        policy.WithOrigins("http://localhost:5173")
+        policy.WithOrigins("http://localhost:5173","https://trade-mate-gilt.vercel.app/")
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
 });
 
+
+var port = Environment.GetEnvironmentVariable("PORT") ?? "10000";
+builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 var app = builder.Build();
 
 // Middleware
